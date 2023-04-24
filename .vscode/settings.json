@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "gba_systemcalls.h": "c",
+        "gba_video.h": "c",
+        "gba_console.h": "c",
+        "gba_base.h": "c"
+    }
+}
