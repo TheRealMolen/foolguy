@@ -4,22 +4,22 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Run GBA",
-            "type": "shell",
-            "dependsOn": ["make"],
-            "group": {
-                "kind": "build",
-                "isDefault" : true,
-            },
-            "command": "\"C:/Program Files/mGBA/mGBA.exe\" ${workspaceFolder}/${workspaceFolderBasename}.gba -4"
-        },
-        {
-            "label": "Make",
+            "label": "make",
             "type": "shell",
             "command": "make",
             "group": {
                 "kind": "build"
             }
+        },
+        {
+            "label": "Run GBA",
+            "type": "shell",
+            "dependsOn": ["make debug"],
+            "group": {
+                "kind": "build",
+                "isDefault" : true,
+            },
+            "command": "\"C:/Program Files/mGBA/mGBA.exe\" ${workspaceFolder}/${workspaceFolderBasename}.gba -4"
         },
         {
             "label": "Make Clean",
