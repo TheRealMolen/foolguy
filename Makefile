@@ -8,6 +8,8 @@ endif
 
 include $(DEVKITARM)/gba_rules
 
+
+
 #---------------------------------------------------------------------------------
 # TARGET is the name of the output
 # BUILD is the directory where object files & intermediate files will be placed
@@ -23,16 +25,24 @@ include $(DEVKITARM)/gba_rules
 TARGET		:= $(notdir $(CURDIR))
 BUILD		:= build
 SOURCES		:= source
-INCLUDES	:= include
+INCLUDES	:= include build
 DATA		:=
 MUSIC		:=
+
+GENDIR	:= source/gen
+
+PALDIR		:= raw/art
+PALETTES	:= $(wildcard $(PALDIR)/*.gpl)
+PALCFILES	:= $(subst $(PALDIR),gen,$(subst .gpl,.c,$(PALETTES)))
+
+.SUFFIXES += .gpl
 
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
 ARCH	:=	-mthumb -mthumb-interwork
 
-CFLAGS	:=	-g -Wall -Werror -O2\
+CFLAGS	:=	-Wall -Werror -O2\
 		-mcpu=arm7tdmi -mtune=arm7tdmi\
 		$(ARCH)
 
@@ -72,7 +82,10 @@ export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
 
 export DEPSDIR	:=	$(CURDIR)/$(BUILD)
 
+GPLFILES	:=	$(foreach dir,$(PALDIR),$(notdir $(wildcard $(dir)/*.gpl)))
+
 CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+CFILES		+=	$(PALCFILES)
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
@@ -102,7 +115,7 @@ export OFILES_SOURCES := $(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
 
 export OFILES := $(OFILES_BIN) $(OFILES_SOURCES)
 
-export HFILES := $(addsuffix .h,$(subst .,_,$(BINFILES)))
+export BIN_HFILES := $(addsuffix .h,$(subst .,_,$(BINFILES)))
 
 export INCLUDE	:=	$(foreach dir,$(INCLUDES),-iquote $(CURDIR)/$(dir)) \
 					$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
@@ -113,19 +126,24 @@ export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 .PHONY: $(BUILD) clean
 
 #---------------------------------------------------------------------------------
-$(BUILD):
-	echo $(CC)
+# entry point - jumps into build/ and re-runs this makefile, dropping into the second part below
+$(BUILD): $(foreach cfile,$(PALCFILES),source/$(cfile))
 	@[ -d $@ ] || mkdir -p $@
+	@[ -d $@/gen ] || mkdir -p $@/gen
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).elf $(TARGET).gba
+	@rm -fr $(BUILD) $(TARGET).elf $(TARGET).gba $(GENDIR)
 
+# palette files
+$(GENDIR)/%.c $(GENDIR)/%.h: $(PALDIR)/%.gpl tools/gpl2c.py
+	@[ -d $(GENDIR) ] || mkdir -p $(GENDIR)
+	python tools/gpl2c.py -o $@ $<
 
 #---------------------------------------------------------------------------------
-else
+else  ##### this part is run by the $(BUILD) target above from within the build/ folder
 
 #---------------------------------------------------------------------------------
 # main targets
@@ -135,7 +153,7 @@ $(OUTPUT).gba	:	$(OUTPUT).elf
 
 $(OUTPUT).elf	:	$(OFILES)
 
-$(OFILES_SOURCES) : $(HFILES)
+$(OFILES_SOURCES) : $(BIN_HFILES)
 
 #---------------------------------------------------------------------------------
 # The bin2o rule should be copied and modified
@@ -158,6 +176,7 @@ soundbank.bin soundbank.h : $(AUDIOFILES)
 	@$(bin2o)
 
 
+# NB. missing build/gen folder, but that's probably ok?
 -include $(DEPSDIR)/*.d
 #---------------------------------------------------------------------------------------
 endif

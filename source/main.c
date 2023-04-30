@@ -8,19 +8,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define ARRAYCOUNT(_arr) ((sizeof(_arr) / sizeof(_arr[0])))
+#include "gen/foolguy_pal.h"
 
-const u16 PALETTE[] =
-{
-	RGB8(0x00, 0x00, 0x00),
-	RGB8(0x44, 0x44, 0x44),
-	RGB8(0x88, 0x88, 0x88),
-	RGB8(0xcc, 0xcc, 0xcc),
-	RGB8(0xff, 0xff, 0xff),
-	RGB8(0xff, 0x20, 0x20),
-	RGB8(0x20, 0xff, 0x20),
-	RGB8(0x20, 0x20, 0xff),
-};
+#define ARRAYCOUNT(_arr) ((sizeof(_arr) / sizeof(_arr[0])))
 
 const u8 TILE_DATA[] =
 {
@@ -80,7 +70,7 @@ int main()
 	REG_BG0CNT = BG_256_COLOR | SCREEN_BASE(31);
 
 	// copy the palette into palette 0
-	memcpy16(BG_COLORS, PALETTE, ARRAYCOUNT(PALETTE));
+	memcpy16(BG_COLORS, FOOLGUY_PAL_paldata, FOOLGUY_PAL_palcount);
 
 	// copy the tile data into bank0 of VRAM
 	memcpy16((void*)VRAM, TILE_DATA, ARRAYCOUNT(TILE_DATA) / 2);

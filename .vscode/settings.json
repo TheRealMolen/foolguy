@@ -3,6 +3,7 @@
         "gba_systemcalls.h": "c",
         "gba_video.h": "c",
         "gba_console.h": "c",
-        "gba_base.h": "c"
+        "gba_base.h": "c",
+        "foolguy_pal.h": "c"
     }
 }
