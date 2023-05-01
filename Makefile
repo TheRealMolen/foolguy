@@ -45,6 +45,8 @@ BG_PNGS		:= bg_gradient.png
 BG_PNGFILES	:= $(foreach png,$(BG_PNGS),$(BG_PNGDIR)/$(png))
 BG_SFILES	:= $(foreach png,$(BG_PNGS),gen/$(subst .png,.s,$(png)))
 
+TRIGCFILES	:= gen/trig.c
+
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
@@ -93,7 +95,7 @@ export DEPSDIR	:=	$(CURDIR)/$(BUILD)
 GPLFILES	:=	$(foreach dir,$(PALDIR),$(notdir $(wildcard $(dir)/*.gpl)))
 
 CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
-CFILES		+=	$(PALCFILES)
+CFILES		+=	$(PALCFILES) $(TRIGCFILES)
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 SFILES		+=	$(BG_SFILES)
@@ -101,6 +103,9 @@ BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
 
 GENFILES	:= $(foreach cfile,$(PALCFILES),source/$(cfile))
 GENFILES	+= $(foreach sfile,$(BG_SFILES),source/$(sfile))
+GENFILES	+= $(foreach cfile,$(TRIGCFILES),source/$(cfile))
+
+XTRATOOLS	:= $(GRIT) $(wildcard tools/*.py)
 
 ifneq ($(strip $(MUSIC)),)
 	export AUDIOFILES	:=	$(foreach dir,$(notdir $(wildcard $(MUSIC)/*.*)),$(CURDIR)/$(MUSIC)/$(dir))
@@ -139,8 +144,9 @@ export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
 #---------------------------------------------------------------------------------
 # entry point - jumps into build/ and re-runs this makefile, dropping into the second part below
-$(BUILD): $(GENFILES)
+$(BUILD): $(GENFILES) Makefile $(XTRATOOLS)
 	@echo all generated deps: $(GENFILES)
+	@echo all extra tools: $(XTRATOOLS)
 	@[ -d $@ ] || mkdir -p $@
 	@[ -d $@/gen ] || mkdir -p $@/gen
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
@@ -164,6 +170,11 @@ $(GENDIR)/%.c $(GENDIR)/%.h: $(PALDIR)/%.gpl tools/gpl2c.py
 $(GENDIR)/%.s $(GENDIR)/%.h: $(BG_PNGDIR)/%.png $(GRIT)
 	@[ -d $(GENDIR) ] || mkdir -p $(GENDIR)
 	$(GRIT) $< $(GRIT_BG_FLAGS) -o $(subst .s,,$@)
+
+# trig lookups
+$(GENDIR)/trig.c $(GENDIR)/trig.h: tools/trigtables.py
+	@[ -d $(GENDIR) ] || mkdir -p $(GENDIR)
+	python $< -o $@
 
 #---------------------------------------------------------------------------------
 
@@ -191,14 +202,12 @@ $(OFILES_SOURCES) : $(BIN_HFILES)
 # rule to build soundbank from music files
 #---------------------------------------------------------------------------------
 soundbank.bin soundbank.h : $(AUDIOFILES)
-#---------------------------------------------------------------------------------
 	@mmutil $^ -osoundbank.bin -hsoundbank.h
 
 #---------------------------------------------------------------------------------
 # This rule links in binary data with the .bin extension
 #---------------------------------------------------------------------------------
 %.bin.o	%_bin.h :	%.bin
-#---------------------------------------------------------------------------------
 	@echo $(notdir $<)
 	@$(bin2o)
 

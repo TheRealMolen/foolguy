@@ -1,4 +1,4 @@
-import argparse, re, os, sys
+import argparse, re, os
 
 
 def parse_gpl(filename):

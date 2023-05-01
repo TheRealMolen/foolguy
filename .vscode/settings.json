@@ -4,6 +4,7 @@
         "gba_video.h": "c",
         "gba_console.h": "c",
         "gba_base.h": "c",
-        "foolguy_pal.h": "c"
+        "foolguy_pal.h": "c",
+        "bg_gradient.h": "c"
     }
 }
