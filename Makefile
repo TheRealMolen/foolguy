@@ -8,7 +8,7 @@ endif
 
 include $(DEVKITARM)/gba_rules
 
-
+#  raw\art\bg_gradient.png -o source/gen/bg_gradient 
 
 #---------------------------------------------------------------------------------
 # TARGET is the name of the output
@@ -36,6 +36,14 @@ PALETTES	:= $(wildcard $(PALDIR)/*.gpl)
 PALCFILES	:= $(subst $(PALDIR),gen,$(subst .gpl,.c,$(PALETTES)))
 
 .SUFFIXES += .gpl
+
+GRIT			:= $(DEVKITPRO)/tools/bin/grit.exe
+GRIT_BG_FLAGS	:= -gB 4 -mRtf4 -p!
+
+BG_PNGDIR	:= raw/art
+BG_PNGS		:= bg_gradient.png
+BG_PNGFILES	:= $(foreach png,$(BG_PNGS),$(BG_PNGDIR)/$(png))
+BG_SFILES	:= $(foreach png,$(BG_PNGS),gen/$(subst .png,.s,$(png)))
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -88,7 +96,11 @@ CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 CFILES		+=	$(PALCFILES)
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
+SFILES		+=	$(BG_SFILES)
 BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
+
+GENFILES	:= $(foreach cfile,$(PALCFILES),source/$(cfile))
+GENFILES	+= $(foreach sfile,$(BG_SFILES),source/$(sfile))
 
 ifneq ($(strip $(MUSIC)),)
 	export AUDIOFILES	:=	$(foreach dir,$(notdir $(wildcard $(MUSIC)/*.*)),$(CURDIR)/$(MUSIC)/$(dir))
@@ -127,7 +139,8 @@ export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
 #---------------------------------------------------------------------------------
 # entry point - jumps into build/ and re-runs this makefile, dropping into the second part below
-$(BUILD): $(foreach cfile,$(PALCFILES),source/$(cfile))
+$(BUILD): $(GENFILES)
+	@echo all generated deps: $(GENFILES)
 	@[ -d $@ ] || mkdir -p $@
 	@[ -d $@/gen ] || mkdir -p $@/gen
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
@@ -137,10 +150,24 @@ clean:
 	@echo clean ...
 	@rm -fr $(BUILD) $(TARGET).elf $(TARGET).gba $(GENDIR)
 
+
+#####-----------------------------------------------------------------------------
+##### molen rules lol
+#####
+
 # palette files
 $(GENDIR)/%.c $(GENDIR)/%.h: $(PALDIR)/%.gpl tools/gpl2c.py
 	@[ -d $(GENDIR) ] || mkdir -p $(GENDIR)
 	python tools/gpl2c.py -o $@ $<
+
+# bg files
+$(GENDIR)/%.s $(GENDIR)/%.h: $(BG_PNGDIR)/%.png $(GRIT)
+	@[ -d $(GENDIR) ] || mkdir -p $(GENDIR)
+	$(GRIT) $< $(GRIT_BG_FLAGS) -o $(subst .s,,$@)
+
+#---------------------------------------------------------------------------------
+
+
 
 #---------------------------------------------------------------------------------
 else  ##### this part is run by the $(BUILD) target above from within the build/ folder

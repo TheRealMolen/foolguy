@@ -9,41 +9,13 @@
 #include <stdlib.h>
 
 #include "gen/foolguy_pal.h"
+#include "gen/bg_gradient.h"
+
+#define CPUFASTSET16(dst, src, numShorts)	CpuFastSet((src), (dst), COPY16 | ((unsigned int)(numShorts)))
+#define CPUFASTSET32(dst, src, numWords)	CpuFastSet((src), (dst), COPY32 | ((unsigned int)(numWords)))
+
 
 #define ARRAYCOUNT(_arr) ((sizeof(_arr) / sizeof(_arr[0])))
-
-const u8 TILE_DATA[] =
-{
-	// tile 0
-	0, 0, 0, 1, 1, 0, 0, 0,
-	0, 0, 1, 2, 2, 1, 0, 0,
-	0, 1, 2, 3, 3, 2, 1, 0,
-	1, 2, 3, 4, 4, 3, 2, 1,
-	1, 2, 3, 4, 4, 3, 2, 1,
-	0, 1, 2, 3, 3, 2, 1, 0,
-	0, 0, 1, 2, 2, 1, 0, 0,
-	0, 0, 0, 1, 1, 0, 0, 0,
-
-	// tile 1
-	0, 1, 2, 3, 4, 5, 6, 7, 
-	1, 2, 3, 4, 5, 6, 7, 0, 
-	2, 3, 4, 5, 6, 7, 0, 1, 
-	3, 4, 5, 6, 7, 0, 1, 2,
-	4, 5, 6, 7, 0, 1, 2, 3,
-	5, 6, 7, 0, 1, 2, 3, 4,
-	6, 7, 0, 1, 2, 3, 4, 5,
-	7, 0, 1, 2, 3, 4, 5, 6,
-
-	// tile 2
-	0, 0, 0, 0, 0, 0, 0, 0, 
-	0, 0, 0, 0, 0, 0, 0, 0, 
-	0, 0, 5, 0, 0, 5, 0, 0, 
-	0, 0, 0, 0, 0, 0, 0, 0, 
-	0, 5, 0, 0, 0, 0, 5, 0, 
-	0, 0, 5, 0, 0, 5, 0, 0, 
-	0, 0, 0, 5, 5, 0, 0, 0, 
-	0, 0, 0, 0, 0, 0, 0, 0, 
-};
 
 
 inline void memcpy16(void* dest, const void* src, int nWords)
@@ -67,17 +39,16 @@ int main()
 	REG_IME = 1;
 
 	REG_DISPCNT = MODE_0 | BG0_ON;
-	REG_BG0CNT = BG_256_COLOR | SCREEN_BASE(31);
+	REG_BG0CNT = BG_16_COLOR | SCREEN_BASE(31);
 
 	// copy the palette into palette 0
 	memcpy16(BG_COLORS, FOOLGUY_PAL_paldata, FOOLGUY_PAL_palcount);
 
 	// copy the tile data into bank0 of VRAM
-	memcpy16((void*)VRAM, TILE_DATA, ARRAYCOUNT(TILE_DATA) / 2);
+	CPUFASTSET32((void*)VRAM, bg_gradientTiles, bg_gradientTilesLen / 4);
 
-	u16* map = MAP_BASE_ADR(31);
-	map[0] = 1;
-	map[1] = 2;
+	// copy map across
+	memcpy16(MAP_BASE_ADR(31), bg_gradientMap, bg_gradientMapLen / 2);
 
     for(;;)
 	{
