@@ -2,15 +2,16 @@ GIMP Palette
 #
 # molen
 #
-  3   1   0	black
- 76  75  57	dark_grey
-137 136 116	grey
-174 173 153	light_grey
-255 252 245	white
+255   0 207	  transparent
+  3   1   0	  black
+ 76  75  57   dark_grey
+137 136 116	  grey
+# 174 173 153	  light_grey
+255 252 245	  white
  21  62  80     dark_blue
  38  86 108     blue
  56 142 175     light_blue
-155  33  36     dark_red
+123  32  34     dark_red
 199  34  40     red
 236  76  89     light_red
  33  84  79     dark_teal
