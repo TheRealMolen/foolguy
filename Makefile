@@ -31,27 +31,6 @@ MUSIC		:=
 
 GENDIR	:= source/gen
 
-PALDIR		:= raw/art
-PALETTES	:= $(wildcard $(PALDIR)/*.gpl)
-PALCFILES	:= $(subst $(PALDIR),gen,$(subst .gpl,.c,$(PALETTES)))
-
-.SUFFIXES += .gpl
-
-GRIT			:= $(DEVKITPRO)/tools/bin/grit.exe
-GRIT_BG_FLAGS	:= -gB 4 -mRtf4 -p! -fa 
-
-ifneq ($(BUILD),$(notdir $(CURDIR)))
-UI_SHARED	:= GFX_UI
-UI_PNGDIR	:= raw/art/export/main_ui
-UI_PNGLIST	:= $(shell cat ${UI_PNGDIR}/manifest.txt)
-UI_PNGFILES	:= $(foreach png,$(UI_PNGLIST),$(UI_PNGDIR)/$(png))
-UI_SFILE	:= gen/$(UI_SHARED).s
-endif
-
-# c:\devkitPro\tools\bin\grit.exe raw/art/export/main_ui/BG_Gradient.png raw/art/export/main_ui/GUI_Window.png -gB 4 -mRtf4 -p! -fa -fx build/GFX_Ui.png -o build/gen/GFX_Ui   
-
-TRIGCFILES	:= gen/trig.c
-
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
@@ -87,6 +66,32 @@ LIBDIRS	:=	$(LIBGBA)
 
 
 ifneq ($(BUILD),$(notdir $(CURDIR)))
+
+#---------------------------------------------------------------------------------
+
+PALDIR		:= raw/art
+PALETTES	:= $(wildcard $(PALDIR)/*.gpl)
+PALCFILES	:= $(subst $(PALDIR),gen,$(subst .gpl,.c,$(PALETTES)))
+
+FNTDIR		:= raw/art
+FONTS		:= $(wildcard $(FNTDIR)/*.fnt)
+FONTSFILES	:= $(subst $(FNTDIR),gen,$(subst .fnt,.s,$(FONTS)))
+
+.SUFFIXES += .gpl
+
+GRIT			:= $(DEVKITPRO)/tools/bin/grit.exe
+GRIT_BG_FLAGS	:= -gB 4 -mRtf4 -p! -fa 
+
+
+TRIGCFILES	:= gen/trig.c
+
+UI_SHARED	:= GFX_UI
+UI_PNGDIR	:= raw/art/export/main_ui
+UI_PNGLIST	:= $(shell cat ${UI_PNGDIR}/manifest.txt)
+UI_PNGFILES	:= $(foreach png,$(UI_PNGLIST),$(UI_PNGDIR)/$(png))
+UI_SFILE	:= gen/$(UI_SHARED).s
+
+
 #---------------------------------------------------------------------------------
 
 export OUTPUT	:=	$(CURDIR)/$(TARGET)
@@ -103,12 +108,13 @@ CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 CFILES		+=	$(PALCFILES) $(TRIGCFILES)
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
-SFILES		+=	$(UI_SFILE)
+SFILES		+=	$(UI_SFILE) $(FONTSFILES)
 BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
 
 GENFILES	:= $(foreach cfile,$(PALCFILES),source/$(cfile))
-GENFILES	+= build/$(UI_SFILE)
+GENFILES	+= $(GENDIR)/$(UI_SHARED).s
 GENFILES	+= $(foreach cfile,$(TRIGCFILES),source/$(cfile))
+GENFILES	+= $(foreach sfile,$(FONTSFILES),source/$(sfile))
 
 XTRATOOLS	:= $(GRIT) $(wildcard tools/*.py)
 
@@ -171,10 +177,15 @@ $(GENDIR)/%.c $(GENDIR)/%.h: $(PALDIR)/%.gpl tools/gpl2c.py
 	@[ -d $(GENDIR) ] || mkdir -p $(GENDIR)
 	python tools/gpl2c.py -o $@ $<
 
-# ui files
-build/$(UI_SFILE): $(UI_PNGFILES)
+# font files
+$(GENDIR)/%.s $(GENDIR)/%.h: $(FNTDIR)/%.fnt tools/fnt2c.py
 	@[ -d $(GENDIR) ] || mkdir -p $(GENDIR)
-	$(GRIT) $^ $(GRIT_BG_FLAGS) -fx $(UI_SHARED).png -o $(GENDIR)/$(UI_SHARED)  
+	python tools/fnt2c.py -o $@ $<
+
+# ui files
+$(GENDIR)/$(UI_SHARED).s $(GENDIR)/$(UI_SHARED).h: $(UI_PNGFILES)
+	@[ -d $(GENDIR) ] || mkdir -p $(GENDIR)
+	$(GRIT) $^ $(GRIT_BG_FLAGS) -fx $(UI_SHARED).png -o $(GENDIR)/$(UI_SHARED)
 
 # trig lookups
 $(GENDIR)/trig.c $(GENDIR)/trig.h: tools/trigtables.py

@@ -5,10 +5,19 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: fnt2c",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": ["raw/art/GUI_font.fnt"],
+            "justMyCode": true
+        },
+        {
             "name": "Debug",
             "type": "cppdbg",
             "request": "launch",
-            "preLaunchTask": "gdb-debug", 
+            "preLaunchTask": "gdb-debug",
             "postDebugTask": "stop emulation",
             "serverLaunchTimeout": 10000,
             "stopAtEntry": true,
@@ -27,7 +36,6 @@
                 }
             ]
         },
-
         // {
         //     "name": "Debug",
         //     "type": "gdb",

@@ -6,8 +6,9 @@
 #include <gba_input.h>
 #include <gba_interrupt.h>
 
-#include "gen/GFX_UI.h"
 #include "gen/foolguy_pal.h"
+#include "gen/GFX_UI.h"
+#include "gen/GUI_font.h"
 #include "math.h"
 
 #define FastCopy16(dst, src, numShorts)	CpuFastSet((src), (dst), COPY16 | ((unsigned int)(numShorts)))
@@ -32,14 +33,32 @@ void updateBg0()
 }
 
 
+#define TILES_PER_ROW	32
+
 void drawText(const char* msg, u32 x, u32 y)
 {
 	u16* textBase = (u16*)MAP_BASE_ADR(TXT_BASE);
-	u16* out = textBase + (x + (y * 32));
+	u16* out = textBase + (x + (y * TILES_PER_ROW));
 
-	for (const char* c = msg; *c; ++c, ++out)
+	for (const char* pc = msg; *pc; ++pc)
 	{
-		*out = (u16)(*c - 'A' + 1);
+		u32 c = *pc;
+		if (c == '\n')
+		{
+			++y;
+			out = textBase + (x + (y * TILES_PER_ROW));
+			continue;
+		}
+
+		if (c < GUI_FONT_firstchar || c > GUI_FONT_lastchar)
+		{
+			++out;
+			continue;
+		}
+
+		u16 glyph = GUI_FONT_glyphtiles[c - GUI_FONT_firstchar];
+		*out = glyph;
+		++out;
 	}
 }
 
@@ -56,6 +75,12 @@ int main()
 	REG_BG1CNT = BG_16_COLOR | SCREEN_BASE(UI_BASE) | BG_PRIORITY(2);
 	REG_BG2CNT = BG_16_COLOR | SCREEN_BASE(TXT_BASE) | BG_PRIORITY(1);
 
+	// alpha blend text layer (bg2) on top of window layer (bg1) to enable antialiasing
+	REG_BLDCNT	= (1<<2)		// 1st target from bg2
+				| (1<<9)		// 2nd target from bg1
+				| (1<<6);		// alpha blend
+	REG_BLDALPHA = 15 | (8<<8);
+
 	// copy the palette into palette 0
 	FastCopy16(BG_COLORS, FOOLGUY_PAL_paldata, FOOLGUY_PAL_palcount);
 
@@ -70,11 +95,20 @@ int main()
 	u16 zero = 0;
 	FastFill16(MAP_BASE_ADR(TXT_BASE), &zero, 1024);
 
-	drawText("HELLO ME DUCKS", 7, 4);
+	drawText("HELLO ME DUCKS\n"
+			"OH WHAT A LOVELY\n"
+			"BUNCH O COCONUTS\n"
+			"YOU HAVE THERE\n"
+			"...\n"
+			"I ALWAYS FANCIED\n"
+			"THE BEACH LIFE\n\n\n"
+			"SIPPIN A PINA\n"
+			"COLADA WHILE THE\n"
+			"WORLD DRIFTS BY",
+		7, 4);
 
-
-	BG_OFFSET[1].x = -10;
-	BG_OFFSET[1].y = 20;
+	BG_OFFSET[1].x = -12;
+	BG_OFFSET[1].y = 17;
 
 	updateBg0();
 
