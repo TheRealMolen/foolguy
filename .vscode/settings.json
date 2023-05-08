@@ -5,6 +5,8 @@
         "gba_console.h": "c",
         "gba_base.h": "c",
         "foolguy_pal.h": "c",
-        "bg_gradient.h": "c"
+        "bg_gradient.h": "c",
+        "gba_interrupt.h": "c",
+        "trig.h": "c"
     }
 }
