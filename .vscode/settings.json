@@ -7,6 +7,10 @@
         "foolguy_pal.h": "c",
         "bg_gradient.h": "c",
         "gba_interrupt.h": "c",
-        "trig.h": "c"
+        "trig.h": "c",
+        "gfx_defs.h": "c",
+        "gba_sound.h": "c",
+        "gba_types.h": "c",
+        "gba_sprites.h": "c"
     }
 }

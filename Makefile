@@ -68,6 +68,14 @@ LIBDIRS	:=	$(LIBGBA)
 ifneq ($(BUILD),$(notdir $(CURDIR)))
 
 #---------------------------------------------------------------------------------
+# gfx defs
+MAX_UI_TILES		:= 512
+MAX_SPRITE_TILES	:= 512
+GFX_DEFS			:= -Dmax_ui_tiles=$(MAX_UI_TILES) -Dmax_sprite_tiles=$(MAX_SPRITE_TILES)
+GFX_DEF_TEMPL		:= raw/template/gfx_defs.templ.h
+GFX_DEF_H			:= source/gen/$(subst .templ,,$(notdir $(GFX_DEF_TEMPL)))
+
+#---------------------------------------------------------------------------------
 
 PALDIR		:= raw/art
 PALETTES	:= $(wildcard $(PALDIR)/*.gpl)
@@ -79,8 +87,9 @@ FONTSFILES	:= $(subst $(FNTDIR),gen,$(subst .fnt,.s,$(FONTS)))
 
 .SUFFIXES += .gpl
 
-GRIT			:= $(DEVKITPRO)/tools/bin/grit.exe
-GRIT_BG_FLAGS	:= -gB 4 -mRtf4 -p! -fa 
+GRIT				:= $(DEVKITPRO)/tools/bin/grit.exe
+GRIT_BG_FLAGS		:= -gB 4 -mRtf4 -p! -fa
+GRIT_SPRITE_FLAGS	:= -gB 4 -m! -p!
 
 
 TRIGCFILES	:= gen/trig.c
@@ -90,6 +99,11 @@ UI_PNGDIR	:= raw/art/export/main_ui
 UI_PNGLIST	:= $(shell cat ${UI_PNGDIR}/manifest.txt)
 UI_PNGFILES	:= $(foreach png,$(UI_PNGLIST),$(UI_PNGDIR)/$(png))
 UI_SFILE	:= gen/$(UI_SHARED).s
+
+SPRITE_PNGDIR	:=	raw/art/export/sprites
+SPRITE_PNGLIST	:=	SPR_guy.png
+SPRITE_PNGFILES	:=	$(foreach png,$(SPRITE_PNGLIST),$(SPRITE_PNGDIR)/$(png))
+SPRITE_SFILES	:=	$(foreach png,$(SPRITE_PNGLIST),gen/$(subst .png,.s,$(png)))
 
 
 #---------------------------------------------------------------------------------
@@ -102,19 +116,21 @@ export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
 
 export DEPSDIR	:=	$(CURDIR)/$(BUILD)
 
-GPLFILES	:=	$(foreach dir,$(PALDIR),$(notdir $(wildcard $(dir)/*.gpl)))
+DATAFILES	:= $(UI_PNGFILES)
 
 CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 CFILES		+=	$(PALCFILES) $(TRIGCFILES)
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
-SFILES		+=	$(UI_SFILE) $(FONTSFILES)
+SFILES		+=	$(UI_SFILE) $(FONTSFILES) $(SPRITE_SFILES)
 BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
 
 GENFILES	:= $(foreach cfile,$(PALCFILES),source/$(cfile))
 GENFILES	+= $(GENDIR)/$(UI_SHARED).s
 GENFILES	+= $(foreach cfile,$(TRIGCFILES),source/$(cfile))
 GENFILES	+= $(foreach sfile,$(FONTSFILES),source/$(sfile))
+GENFILES	+= $(foreach sfile,$(SPRITE_SFILES),source/$(sfile))
+GENFILES	+= $(GFX_DEF_H)
 
 XTRATOOLS	:= $(GRIT) $(wildcard tools/*.py)
 
@@ -151,16 +167,22 @@ export INCLUDE	:=	$(foreach dir,$(INCLUDES),-iquote $(CURDIR)/$(dir)) \
 
 export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
-.PHONY: $(BUILD) clean
+.PHONY: $(BUILD) clean gen
 
 #---------------------------------------------------------------------------------
 # entry point - jumps into build/ and re-runs this makefile, dropping into the second part below
-$(BUILD): $(GENFILES) Makefile $(XTRATOOLS)
+$(BUILD): $(GENFILES) Makefile $(XTRATOOLS) $(DATAFILES)
 	@echo all generated deps: $(GENFILES)
 	@echo all extra tools: $(XTRATOOLS)
+	@echo all object files: $(OFILES)
 	@[ -d $@ ] || mkdir -p $@
 	@[ -d $@/gen ] || mkdir -p $@/gen
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+
+gen: $(GENFILES) Makefile $(XTRATOOLS) $(DATAFILES)
+	@echo all data files: $(DATAFILES)
+	@echo all generated deps: $(GENFILES)
+	@echo generating...
 
 #---------------------------------------------------------------------------------
 clean:
@@ -174,23 +196,34 @@ clean:
 
 # palette files
 $(GENDIR)/%.c $(GENDIR)/%.h: $(PALDIR)/%.gpl tools/gpl2c.py
-	@[ -d $(GENDIR) ] || mkdir -p $(GENDIR)
+	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
 	python tools/gpl2c.py -o $@ $<
 
 # font files
 $(GENDIR)/%.s $(GENDIR)/%.h: $(FNTDIR)/%.fnt tools/fnt2c.py
-	@[ -d $(GENDIR) ] || mkdir -p $(GENDIR)
+	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
 	python tools/fnt2c.py -o $@ $<
 
 # ui files
 $(GENDIR)/$(UI_SHARED).s $(GENDIR)/$(UI_SHARED).h: $(UI_PNGFILES)
-	@[ -d $(GENDIR) ] || mkdir -p $(GENDIR)
-	$(GRIT) $^ $(GRIT_BG_FLAGS) -fx $(UI_SHARED).png -o $(GENDIR)/$(UI_SHARED)
+	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
+	$(GRIT) $^ $(GRIT_BG_FLAGS) -W£ -fx $(UI_SHARED).png -o $(GENDIR)/$(UI_SHARED)
+
+# sprite files
+$(GENDIR)/%.s $(GENDIR)/%.h: $(SPRITE_PNGDIR)/%.png
+	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
+	$(GRIT) $^ $(GRIT_SPRITE_FLAGS) -o $(subst .s,,$@)
 
 # trig lookups
 $(GENDIR)/trig.c $(GENDIR)/trig.h: tools/trigtables.py
-	@[ -d $(GENDIR) ] || mkdir -p $(GENDIR)
+	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
 	python $< -o $@
+
+# gfx defs
+$(GFX_DEF_H): $(GFX_DEF_TEMPL) Makefile
+	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
+	python tools/xpand.py -o $@ $< $(GFX_DEFS)
+
 
 #---------------------------------------------------------------------------------
 
