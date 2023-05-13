@@ -2,6 +2,31 @@
 gba shenanigans
 ===============
 
+building & running:
+-------------------
+* install devkitARM with GBA support
+* make sure that `...\devkitPro\msys2\usr\bin` is on your path, and that `which make` both works and returns `/opt/devkitpro/msys2/usr/bin/make`
+* cross your fingers and run `make` in the directory that this readme is in
+* it should spit out a `.gba` file - pop that in an emulator! these all worked for me:
+    * [mGBA](https://mgba.io/)
+    * [no$gba](https://www.nogba.com/)
+    * [online gba](https://gba.js.org/player#-DEBUG-hello) *select the rom from File->Game, and press Play*
+
+
+custom tools:
+-------------
+
+### fnt2c.py
+Reads a simple font definition file and emits `.h` and `.s` files containing mapping table from ascii -> glyph index
+
+### gpl2c.py
+Reads a GIMP palette and emits `.h`/`.c` files containing the palette data in GBA-friendly format
+
+### trigtables.py
+Generates trig lookup tables
+
+### xpand.py
+Simple template/variable replacement tool *(used to emit a header with constant values that are defined in the Makefile)*
 
 
 refs:

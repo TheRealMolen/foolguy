@@ -8,8 +8,6 @@ endif
 
 include $(DEVKITARM)/gba_rules
 
-#  raw\art\bg_gradient.png -o source/gen/bg_gradient 
-
 #---------------------------------------------------------------------------------
 # TARGET is the name of the output
 # BUILD is the directory where object files & intermediate files will be placed
@@ -207,7 +205,7 @@ $(GENDIR)/%.s $(GENDIR)/%.h: $(FNTDIR)/%.fnt tools/fnt2c.py
 # ui files
 $(GENDIR)/$(UI_SHARED).s $(GENDIR)/$(UI_SHARED).h: $(UI_PNGFILES)
 	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
-	$(GRIT) $^ $(GRIT_BG_FLAGS) -W£ -fx $(UI_SHARED).png -o $(GENDIR)/$(UI_SHARED)
+	$(GRIT) $^ $(GRIT_BG_FLAGS) -W£ -fx build/$(UI_SHARED).png -o $(GENDIR)/$(UI_SHARED)
 
 # sprite files
 $(GENDIR)/%.s $(GENDIR)/%.h: $(SPRITE_PNGDIR)/%.png
