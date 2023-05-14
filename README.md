@@ -4,7 +4,7 @@ gba shenanigans
 
 building & running:
 -------------------
-* install devkitARM with GBA support
+* install [devkitARM](https://devkitpro.org/wiki/Getting_Started) with GBA support
 * make sure that `...\devkitPro\msys2\usr\bin` is on your path, and that `which make` both works and returns `/opt/devkitpro/msys2/usr/bin/make`
 * cross your fingers and run `make` in the directory that this readme is in
 * it should spit out a `.gba` file - pop that in an emulator! these all worked for me:
@@ -33,8 +33,8 @@ refs:
 -----
 
 ### general
+* tonc *(classic GBA docs/tutorial/guide)*: https://www.coranac.com/projects/tonc/
 * libgba source: https://github.com/devkitPro/libgba/tree/master
-* tonc: https://www.coranac.com/tonc/text/toc.htm
 
 
 ### audio
