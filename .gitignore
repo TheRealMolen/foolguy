@@ -2,3 +2,5 @@ build
 *.elf
 *.sav
 source/gen
+*.pyc
+
