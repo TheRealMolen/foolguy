@@ -2,36 +2,35 @@ TRAX 0.1
 name=Main Theme
 
 !Pattern id=0 beats=32 tracks=4
-C-5 vF d3 c1	C-3 vC d4	-	G#3
+C-5 vF d3 c1	C-3 vC d4 c2	-	G#3 vF d2 s0
 -	-	-	-
-G-5 vE d3 c1	-	A-5 v3 l65 i3	-
+G-5 vE d3 c1	-	A-5 l65 v3 d2 i3	-
 -	-	-	-
-C-5 vF d3 c1	D-3 vC d4	-	-
+C-5 vF d3 c1	D-3 vC d4 c2	-	-
 -	-	-	-
-G-5 vE d3 c1	-	-	F#2
+G-5 vE d3 c1	-	-	F#2 vF d2 s0
 -	-	-	-
-C-5 vF d3 c1	E-3 vC d4	-	-
--	-	-	-
-G-5 vE d3 c1	-	-	-
--	-	-	-
-C-5 vF d3 c1	F-3 vC d4	-	-
+C-5 vF d3 c1	E-3 vC d4 c2	-	-
 -	-	-	-
 G-5 vE d3 c1	-	-	-
 -	-	-	-
-C-5 vF d3 c1	G-3 vC d4	-	-
+C-5 vF d3 c1	F-3 vC d4 c2	-	-
 -	-	-	-
 G-5 vE d3 c1	-	-	-
 -	-	-	-
-C-5 vF d3 c1	A-4 vC d4	-	-
+C-5 vF d3 c1	G-3 vC d4 c2	-	-
 -	-	-	-
 G-5 vE d3 c1	-	-	-
 -	-	-	-
-C-5 vF d3 c1	Ab4 vC d4	-	-
+C-5 vF d3 c1	A-4 vC d4 c2	-	-
 -	-	-	-
 G-5 vE d3 c1	-	-	-
 -	-	-	-
-C-5 vF d3 c1	C#4 vC d4	-	-
+C-5 vF d3 c1	Ab4 vC d4 c2	-	-
 -	-	-	-
 G-5 vE d3 c1	-	-	-
 -	-	-	-
-
+C-5 vF d3 c1	C#4 vC d4 c2	-	-
+-	-	-	-
+G-5 vE d3 c1	-	-	-
+-	-	-	-

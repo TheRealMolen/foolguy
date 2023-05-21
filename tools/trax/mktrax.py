@@ -47,20 +47,21 @@ def load_btn_pressed():
     infilename = tkfiledlg.askopenfilename(defaultextension='trx', filetypes=[('trax file', '*.trx')], parent=window, initialdir=DEFAULT_DATA_DIR)
     print('trying to open', infilename, 'to read from')
     if infilename:
-        song.loadFromFile(infilename)
+        song.load_from_file(infilename)
+        songname_txt.set(song.name)
         set_active_pattern(0)
 
 def save_btn_pressed():
     outfilename = tkfiledlg.asksaveasfilename(defaultextension='trx', filetypes=[('trax file', '*.trx')], parent=window, initialdir=DEFAULT_DATA_DIR)
     print('trying to open', outfilename, 'to write to')
     if outfilename:
-        song.saveToFile(outfilename)
+        song.save_to_file(outfilename)
 
 
 
 
 def get_song_size_fmt():
-    return '%0xh B' % song.calc_byte_size()
+    return '%0xh byt' % song.calc_byte_size()
 
 
 
@@ -68,13 +69,16 @@ control_frame = tk.Frame(bg=BGCOL)
 
 load_btn = tk.Button(master=control_frame, text='LOAD', command=load_btn_pressed, foreground=FGCOL, background=BGCOL, font=FONT)
 save_btn = tk.Button(master=control_frame, text='SAVE', command=save_btn_pressed, foreground=FGCOL, background=BGCOL, font=FONT)
+songname_txt = tk.StringVar()
+songname_ent = tk.Entry(master=control_frame, textvariable=songname_txt, foreground=FGCOL, background=BGCOL, font=FONT)
 legend_lbl = tk.Label(master=control_frame, text='['+trax.EDITOR_NOTE_GUIDE+']', foreground=FGCOL, background=BGCOL, font=FONT, padx=4)
 size_lbl = tk.Label(master=control_frame, text=get_song_size_fmt(), foreground=FGCOL, background=BGCOL, font=FONT_SM, padx=4)
 
 load_btn.pack(side=tk.LEFT, anchor='n')
 save_btn.pack(side=tk.LEFT, anchor='n')
-size_lbl.pack(side=tk.RIGHT, anchor='ne')
-legend_lbl.pack(side=tk.RIGHT, anchor='ne')
+songname_ent.pack(side=tk.LEFT, padx=4)
+size_lbl.pack(side=tk.RIGHT, anchor='e')
+legend_lbl.pack(side=tk.RIGHT, anchor='e')
 control_frame.grid(row=0, column=0, columnspan=NUM_COLS, sticky='new', padx=4, pady=4)
 
 
@@ -84,13 +88,13 @@ def init_track_ctrls():
 
         ctrls = []
 
-        e = tk.Label(width=4, font=FONT, background=BGCOL, foreground=IDCOL)
+        e = tk.Label(width=3, font=FONT, background=BGCOL, foreground=IDCOL)
         e.configure(text=f' %02d' % beat)
         e.grid(row=beat+BEAT_ROW_START, column=0)
         ctrls.append(e)
 
         for track in range(trax.NUM_TRACKS):
-            e = tk.Label(width=11, font=FONT, background=BGCOL, foreground=FGCOL, padx=6, text=trax.EMPTY_EDITOR_NOTE)
+            e = tk.Label(width=11, font=FONT, background=BGCOL, foreground=FGCOL, padx=6, text=trax.EMPTY_EDITOR_NOTE, cursor='cross_reverse')
             e.grid(row=beat+BEAT_ROW_START, column=track+TRACK_COL_START)
 
             onclick = lambda _, track=track, beat=beat: handle_beat_ctrl_clicked(track, beat)
@@ -104,6 +108,7 @@ def init_track_ctrls():
 
 
 beat_ctrls = init_track_ctrls()
+songname_txt.set(song.name)
 
 
 

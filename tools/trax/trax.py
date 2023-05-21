@@ -117,8 +117,7 @@ class GbaNote:
         return note_str + ' ' + env_str + ' ' + ext_str
 
     def get_editor_ext_str(self):
-        return '--'
-        
+        return '--'        
 
     def _get_env_str(self) -> str:
         if not self.reverse:
@@ -158,6 +157,18 @@ class GbaNote:
         return False
     
 
+    def get_save_str(self):
+        if not self.active:
+            return '-'
+        
+        s = self._note + self._accidental + str(self._octave)
+        if self.length > 0:
+            s += ' l%d' % self.length
+        s += ' v%X d%d' % (self.velocity, self.decay if not self.reverse else -self.decay)
+
+        return s
+    
+
     def __repr__(self):
         return self.get_editor_str()
 
@@ -169,14 +180,20 @@ class SquareNote(GbaNote):
     
     def __init__(self):
         GbaNote.__init__(self)
-        self.duty = 50
+        self.duty = self.DUTIES[50]
 
-    def _parse_token(self, token):                
+    def _parse_token(self, token):
         if token[0] == 'c':
-            self.duty = self.DUTIES_BY_ENCODING[int(token[1:])]
+            self.duty = int(token[1:])
             return True
         
         return super()._parse_token(token)    
+    
+    def get_save_str(self):
+        s = super().get_save_str()
+        if self.active:
+            s += ' c%d' % self.duty
+        return s
 
     def get_gba_ctrl(self):
         "return the value to write into REG_SOUNDxCNT_H(62h/68h) for this note"
@@ -198,6 +215,9 @@ class SquareNote(GbaNote):
         word = word | (clamp(self.velocity, 0, 15) << 12)
 
         return word
+    
+    def get_editor_ext_str(self):
+        return f'{self.duty}-'
 
 
 class WaveTblNote(GbaNote):
@@ -214,6 +234,13 @@ class WaveTblNote(GbaNote):
             return True
         
         return super()._parse_token(token)  
+    
+    def get_save_str(self):
+        s = super().get_save_str()
+        if self.active:
+            s += ' i%d' % self.instrument
+        return s
+    
 
     def get_gba_ctrl(self):
         "return the value to write into REG_SOUND3CNT_H(72h) for this note"
@@ -228,6 +255,9 @@ class WaveTblNote(GbaNote):
         word = word | (self.VEL_TO_VOL[self.velocity] << 0xD)
 
         return word
+    
+    def get_editor_ext_str(self):
+        return '%02X' % self.instrument
 
 
 class NoiseNote(GbaNote):
@@ -241,10 +271,21 @@ class NoiseNote(GbaNote):
         self._note = 'c'
 
         self.shortseq = False   # if True, drops to only using a 7 stage rng, repeating after 63 clocks
+
+
+    def _parse_token(self, token):
+        if token[0] == 's':
+            self.shortseq = False if token[1] == '0' else True
+            return True
         
-        self.decay = 2          # decay rate, higher is slower, 1-7
-        self.reverse = False    # if True, the envelope is reversed
-        
+        return super()._parse_token(token)    
+    
+    def get_save_str(self):
+        s = super().get_save_str()
+        if self.active:
+            s += ' s%d' % (1 if self.shortseq else 0)
+        return s
+                
     
     def get_clockdiv(self):
         if not self.active:
@@ -260,7 +301,6 @@ class NoiseNote(GbaNote):
             raise Exception(f'Noise: can\'t pack invalid note {self._note}')
         accbit = 0 if self._accidental != '-' else 1
         return (noteix << 1) | accbit
-
 
 
     def get_gba_ctrl(self):
@@ -299,6 +339,9 @@ class NoiseNote(GbaNote):
 
         word = word | 0x8000    # trigger envelope/length
         return word
+    
+    def get_editor_ext_str(self):
+        return '0-' if not self.shortseq else '1-'
         
 
 
@@ -341,6 +384,19 @@ class Pattern():
                 pattern.tracks[trackix][beatix].parse(note_toks, trackix)
         
         return pattern
+    
+    def get_save_str(self, ix):
+        lines = []
+        lines.append(f'!Pattern id={ix} beats={self.nbeats} tracks={len(self.tracks)}')
+
+        for beatix in range(self.nbeats):
+            notes = []
+            for track in self.tracks:
+                notes.append(track[beatix].get_save_str())
+
+            lines.append('\t'.join(notes))
+        
+        return '\n'.join(lines)
 
 
 
@@ -357,7 +413,7 @@ class Song:
 
         return bytes
     
-    def loadFromFile(self, infilename):
+    def load_from_file(self, infilename):
         old_patterns = self.patterns
         self.patterns = []
 
@@ -373,6 +429,9 @@ class Song:
                     line = next(itline)
                     if line == '':
                         break
+                    key,val = [s.strip() for s in line.split('=', 1)]
+                    self._read_cfg(key, val)
+
 
                 # parse song data
                 while True:
@@ -387,8 +446,29 @@ class Song:
                 pass
 
 
-    def saveFromFile(self, outfilename):
-        print('TODO: saving')
+    def get_save_str(self):
+        lines = []
+        lines.append('TRAX 0.1')
+        lines.append(f'name={self.name}')
+        lines.append('')
+
+        for ix,pattern in enumerate(self.patterns):
+            lines.append(pattern.get_save_str(ix))
+            lines.append('')
+
+        return '\n'.join(lines)
+
+    def save_to_file(self, outfilename):
+        with open(outfilename, 'wt') as outfile:
+            outfile.write(self.get_save_str())
+
+    
+    def _read_cfg(self, key, val):
+        if key == 'name':
+            self.name = val
+        
+        else:
+            print(f'WARNING: unknown config val "{key}"; ignoring')
 
 
     @staticmethod
@@ -413,6 +493,7 @@ class Song:
 if __name__ == '__main__':
     song = Song()
     infilename = 'raw/music/theme.trx'
-    song.loadFromFile(infilename)
+    song.load_from_file(infilename)
     print(f'loaded song with {len(song.patterns)} patterns from {infilename}')
+    print(song.get_save_str())
 
