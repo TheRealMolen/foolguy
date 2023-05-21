@@ -16,7 +16,7 @@ NUM_ROWS    = 1 + NUM_BEATS_VISIBLE
 TRACK_COL_START = 1
 BEAT_ROW_START  = 1
 
-FONT = ('Fira Code', 11, 'bold')
+FONT = ('Fira Code', 11, 'normal')
 FONT_SM = ('Fira Code', 9, 'normal')
 BGCOL       = '#222222'
 SELROWBGCOL = '#083018'
@@ -68,11 +68,13 @@ control_frame = tk.Frame(bg=BGCOL)
 
 load_btn = tk.Button(master=control_frame, text='LOAD', command=load_btn_pressed, foreground=FGCOL, background=BGCOL, font=FONT)
 save_btn = tk.Button(master=control_frame, text='SAVE', command=save_btn_pressed, foreground=FGCOL, background=BGCOL, font=FONT)
+legend_lbl = tk.Label(master=control_frame, text='['+trax.EDITOR_NOTE_GUIDE+']', foreground=FGCOL, background=BGCOL, font=FONT, padx=4)
 size_lbl = tk.Label(master=control_frame, text=get_song_size_fmt(), foreground=FGCOL, background=BGCOL, font=FONT_SM, padx=4)
 
 load_btn.pack(side=tk.LEFT, anchor='n')
 save_btn.pack(side=tk.LEFT, anchor='n')
 size_lbl.pack(side=tk.RIGHT, anchor='ne')
+legend_lbl.pack(side=tk.RIGHT, anchor='ne')
 control_frame.grid(row=0, column=0, columnspan=NUM_COLS, sticky='new', padx=4, pady=4)
 
 
@@ -88,7 +90,7 @@ def init_track_ctrls():
         ctrls.append(e)
 
         for track in range(trax.NUM_TRACKS):
-            e = tk.Label(width=8, font=FONT, background=BGCOL, foreground=FGCOL, padx=6, text='--- --')
+            e = tk.Label(width=11, font=FONT, background=BGCOL, foreground=FGCOL, padx=6, text=trax.EMPTY_EDITOR_NOTE)
             e.grid(row=beat+BEAT_ROW_START, column=track+TRACK_COL_START)
 
             onclick = lambda _, track=track, beat=beat: handle_beat_ctrl_clicked(track, beat)
@@ -132,10 +134,10 @@ def update_note(beat, trak, key):
     trak_note = pattern.tracks[trak][beat]
 
     if key in 'abcdefg':
-        trak_note.note = key.upper()
+        trak_note.set_note(key.upper())
         if not trak_note.active:
             trak_note.active = True
-            trak_note.octave = last_octave
+            trak_note.set_octave(last_octave)
 
     elif key == 'numbersign':
         ACCIDENTALS = list('-#b')
@@ -143,8 +145,8 @@ def update_note(beat, trak, key):
         newaccix = (oldaccix + 1) % len(ACCIDENTALS)
         trak_note.accidental = ACCIDENTALS[newaccix]
 
-    elif key in '1234567':
-        trak_note.octave = int(key)
+    elif key in '01234567':
+        trak_note.set_octave(int(key))
         last_octave = int(key)
 
     elif key in 'x-':

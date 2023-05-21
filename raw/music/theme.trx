@@ -2,13 +2,13 @@ TRAX 0.1
 name=Main Theme
 
 !Pattern id=0 beats=32 tracks=4
-C-5 vF d3 c1	C-3 vC d4	-	-
+C-5 vF d3 c1	C-3 vC d4	-	G#3
 -	-	-	-
-G-5 vE d3 c1	-	-	-
+G-5 vE d3 c1	-	A-5 v3 l65 i3	-
 -	-	-	-
 C-5 vF d3 c1	D-3 vC d4	-	-
 -	-	-	-
-G-5 vE d3 c1	-	-	-
+G-5 vE d3 c1	-	-	F#2
 -	-	-	-
 C-5 vF d3 c1	E-3 vC d4	-	-
 -	-	-	-
