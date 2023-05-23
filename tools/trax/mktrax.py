@@ -64,6 +64,14 @@ def get_song_size_fmt():
     return '%0xh byt' % song.calc_byte_size()
 
 
+is_focused_in_control = 0
+def handle_focus_in(*args):
+    global is_focused_in_control
+    is_focused_in_control += 1
+def handle_focus_out(*args):
+    global is_focused_in_control
+    is_focused_in_control -= 1
+
 
 control_frame = tk.Frame(bg=BGCOL)
 
@@ -71,6 +79,8 @@ load_btn = tk.Button(master=control_frame, text='LOAD', command=load_btn_pressed
 save_btn = tk.Button(master=control_frame, text='SAVE', command=save_btn_pressed, foreground=FGCOL, background=BGCOL, font=FONT)
 songname_txt = tk.StringVar()
 songname_ent = tk.Entry(master=control_frame, textvariable=songname_txt, foreground=FGCOL, background=BGCOL, font=FONT)
+songname_ent.bind('<FocusIn>', handle_focus_in)
+songname_ent.bind('<FocusOut>', handle_focus_out)
 legend_lbl = tk.Label(master=control_frame, text='['+trax.EDITOR_NOTE_GUIDE+']', foreground=FGCOL, background=BGCOL, font=FONT, padx=4)
 size_lbl = tk.Label(master=control_frame, text=get_song_size_fmt(), foreground=FGCOL, background=BGCOL, font=FONT_SM, padx=4)
 
@@ -109,6 +119,8 @@ def init_track_ctrls():
 
 beat_ctrls = init_track_ctrls()
 songname_txt.set(song.name)
+def update_songname(*args): song.name = songname_txt.get()
+songname_txt.trace('w', update_songname) 
 
 
 
@@ -162,7 +174,10 @@ def update_note(beat, trak, key):
 
 
 def handle_keypress(evt):
-    global curr_beat, curr_trak
+    global curr_trak
+
+    if is_focused_in_control > 0:
+        return
 
     if evt.keysym == 'Up':
         update_curr_beat((curr_beat + pattern.nbeats - 1) % NUM_BEATS_VISIBLE)
@@ -183,6 +198,9 @@ def handle_keypress(evt):
 
 
 def handle_beat_ctrl_clicked(trackix, beatix):
+    # force a defocus of any focused widget
+    window.focus_set()
+
     global curr_trak
     curr_trak = trackix
     update_curr_beat(beatix)
