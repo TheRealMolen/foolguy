@@ -1,4 +1,4 @@
-import math
+import math, struct
 
 
 FLAT_TO_SHARP = { 'ab':'g#', 'bb':'a#', 'cb':'b', 'db':'c#', 'eb':'d#', 'fb':'e', 'gb':'f#' }
@@ -205,7 +205,7 @@ class SquareNote(GbaNote):
         if self.length >= 0:
             word = word | clamp(self.length, 0, 63)
         
-        word = word | (self.DUTIES[self.duty] << 6)
+        word = word | (self.duty << 6)
 
         word = word | (clamp(self.decay, 0, 7) << 8)
 
@@ -400,11 +400,20 @@ class Pattern():
 
 
 
+TICKS_PER_SEC = 60
+BEATS_PER_TBEAT = 4
+
+def calc_ticks_per_tbeat(bpm):
+    beats_per_sec = bpm / 60
+    tbeats_per_sec = beats_per_sec * BEATS_PER_TBEAT
+    return round(TICKS_PER_SEC / tbeats_per_sec)
+
 
 class Song:
     def __init__(self):
         self.patterns = [Pattern()]
         self.name = 'unnamed'
+        self.bpm = 120
 
     def calc_byte_size(self):
         bytes = 0 # header bytes
@@ -486,6 +495,39 @@ class Song:
             line = next(iter)
             if not line == '':
                 return line
+
+
+TRAX_VERSION = 1
+
+
+def check_align(buf, align=4):
+    if (len(buf) & (align-1)) != 0:
+        raise Exception(f'buffer size {len(buf)} is not a multiple of {align}')
+
+def compile_pattern(pattern: Pattern):
+    header = struct.pack('Bxxx', pattern.nbeats)
+    check_align(header, 4)
+
+    buf = header
+    for beat in range(pattern.nbeats):
+        for trackix in range(len(pattern.tracks)):
+            buf += struct.pack('HH', pattern.tracks[trackix][beat].get_gba_ctrl(), pattern.tracks[trackix][beat].get_gba_freq())
+
+    check_align(buf, 4)
+    return buf
+
+def compile_song(song: Song):
+    header = struct.pack('4sBBH', b'TRAX', TRAX_VERSION, len(song.patterns), calc_ticks_per_tbeat(song.bpm))
+    check_align(header, 4)
+
+    buf = header
+    for pattern in song.patterns:
+        buf += compile_pattern(pattern)
+        
+    check_align(buf, 4)
+
+    return buf
+
 
 
 

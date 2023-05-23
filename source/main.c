@@ -11,6 +11,7 @@
 #include "config.h"
 #include "math.h"
 #include "mlngba.h"
+#include "trax.h"
 
 #include "gen/foolguy_pal.h"
 #include "gen/GFX_UI.h"
