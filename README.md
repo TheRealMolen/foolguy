@@ -28,6 +28,15 @@ Generates trig lookup tables
 ### xpand.py
 Simple template/variable replacement tool *(used to emit a header with constant values that are defined in the Makefile)*
 
+### trax/mktrax.py
+Tracker editor supporting live update:
+1. start mGBA
+2. from Tools->Scripting, load trax/mktrax_server.lua
+3. run mktrax.py
+4. load / edit .trx file
+5. hit `live` button and wait for initial sync
+6. enjoy live music editing & playback experience. don't forget to save your music when you're happy with it.
+
 
 refs:
 -----
