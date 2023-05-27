@@ -353,6 +353,36 @@ class NoiseNote(GbaNote):
         return '0-' if not self.shortseq else '1-'
         
 
+###############################################################################################################
+
+def hex_str_to_ints(hex_str):
+    return [int(c,16) for c in hex_str if c != ' ']
+
+class WaveTable:
+    def __init__(self):
+        self.samples = hex_str_to_ints('789a bcde fedc ba98 7654 3210 0123 4567')
+        if len(self.samples) != 32:
+            raise Exception('invalid wavetable: ' + repr(self.samples))
+
+    def get_gba_u32s(self):
+        u32s = []
+        for offs in range(0, len(self.samples), 8):
+            s = [clamp(s, 0, 15) for s in self.samples[offs:offs+8]]
+
+            # samples 01234567 are packed to 67452301
+            u32 = ((s[0] << 4) |
+                   (s[1] << 0) |
+                   (s[2] << 12) |
+                   (s[3] << 8) |
+                   (s[4] << 20) |
+                   (s[5] << 16) |
+                   (s[6] << 28) |
+                   (s[7] << 24))
+            
+            u32s.append(u32)
+
+        return u32s
+
 
 ###############################################################################################################
 
@@ -412,7 +442,7 @@ class Pattern():
 TICKS_PER_SEC = 60
 BEATS_PER_TBEAT = 4
 
-def calc_ticks_per_tbeat(bpm):
+def calc_ticks_per_step(bpm):
     beats_per_sec = bpm / 60
     tbeats_per_sec = beats_per_sec * BEATS_PER_TBEAT
     return round(TICKS_PER_SEC / tbeats_per_sec)
@@ -423,6 +453,7 @@ class Song:
         self.patterns = [Pattern()]
         self.name = 'unnamed'
         self.bpm = 120
+        self.instrument = WaveTable()
 
     def calc_byte_size(self):
         bytes = 0 # header bytes
@@ -468,6 +499,7 @@ class Song:
         lines = []
         lines.append('TRAX 0.1')
         lines.append(f'name={self.name}')
+        lines.append(f'bpm={self.bpm}')
         lines.append('')
 
         for ix,pattern in enumerate(self.patterns):
@@ -484,6 +516,8 @@ class Song:
     def _read_cfg(self, key, val):
         if key == 'name':
             self.name = val
+        elif key == 'bpm':
+            self.bpm = int(val)
         
         else:
             print(f'WARNING: unknown config val "{key}"; ignoring')
@@ -526,7 +560,11 @@ def compile_pattern(pattern: Pattern):
     return buf
 
 def compile_song(song: Song):
-    header = struct.pack('4sBBH', b'TRAX', TRAX_VERSION, len(song.patterns), calc_ticks_per_tbeat(song.bpm))
+    header = struct.pack('4sBBH', b'TRAX', TRAX_VERSION, len(song.patterns), calc_ticks_per_step(song.bpm))
+    check_align(header, 4)
+
+    wavtbl = song.instrument.get_gba_u32s()
+    header += struct.pack('2I', wavtbl[0], wavtbl[1])
     check_align(header, 4)
 
     buf = header

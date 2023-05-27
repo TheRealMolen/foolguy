@@ -43,10 +43,10 @@
 #define	REG_SND2FREQ	REG_SOUND2CNT_H
 
 // sound3 - wavetable
-#define	REG_SND3SEL	    (*((u16 volatile *) (REG_BASE + 0x070)))
+#define	REG_SND3CFG	    (*((u16 volatile *) (REG_BASE + 0x070)))
 #define	REG_SND3CTRL    (*((u16 volatile *) (REG_BASE + 0x072)))
 #define	REG_SND3FREQ	(*((u16 volatile *) (REG_BASE + 0x074)))
-#define REG_SND3WAV0    (*((u32 volatile *) (REG_BASE + 0x090)))    // MSB | sample 7 | .... | sample 0 | LSB
+#define REG_SND3WAV0    (*((u32 volatile *) (REG_BASE + 0x090)))    // MSB | sample 6 | sample 7 | .... | sample 1 | LSB
 #define REG_SND3WAV1    (*((u32 volatile *) (REG_BASE + 0x094)))
 #define REG_SND3WAV2    (*((u32 volatile *) (REG_BASE + 0x098)))
 #define REG_SND3WAV3    (*((u32 volatile *) (REG_BASE + 0x09c)))

@@ -6,6 +6,14 @@
 #define TRAX_MAGIC      'XART'      // little endian
 #define TRAX_VERSION    1
 
+
+typedef struct
+{
+    u32 samples[2];  // ready to load into REG_WAVERAM0-1/2-3
+} TraxWaveTbl;
+
+
+
 typedef struct
 {
     u32 magic;  // TRAX
@@ -15,6 +23,8 @@ typedef struct
 
     // TODO: song def
     // TODO: snd3 instrument def
+    
+    TraxWaveTbl    wavetable;
     
 } TraxHdr;
 

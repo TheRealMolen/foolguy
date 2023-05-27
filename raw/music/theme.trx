@@ -1,5 +1,6 @@
 TRAX 0.1
 name=Main Theme
+bpm=120
 
 !Pattern id=0 beats=32 tracks=4
 C-5 vF d3 c1	C-3 vC d4 c2	-	G#3 vF d2 s0

@@ -140,6 +140,7 @@ def load_btn_pressed():
     if infilename:
         song.load_from_file(infilename)
         songname_txt.set(song.name)
+        bpm_txt.set(song.bpm)
         set_active_pattern(0)
 
 def save_btn_pressed():
@@ -173,24 +174,42 @@ def handle_focus_out(*args):
     is_focused_in_control -= 1
 
 
+def entry_with_label(parent, textvar, label_text, **kwargs):
+    # create a frame containing a label and an entry and return the frame
+    frm = tk.Frame(bg=BGCOL, master=parent)
+
+    ent = tk.Entry(master=frm, textvariable=textvar, foreground=FGCOL, background=BGCOL, font=FONT, **kwargs)
+    lbl = tk.Label(master=frm, text=label_text, foreground=FGCOL, background=BGCOL, font=FONT)
+
+    ent.bind('<FocusIn>', handle_focus_in)
+    ent.bind('<FocusOut>', handle_focus_out)
+
+    lbl.pack(side=tk.LEFT, anchor='n', padx=4)
+    ent.pack(side=tk.LEFT, anchor='n')
+
+    return frm
+
+
 control_frame = tk.Frame(bg=BGCOL)
 
 load_btn = tk.Button(master=control_frame, text='LOAD', command=load_btn_pressed, foreground=FGCOL, background=BGCOL, font=FONT)
 save_btn = tk.Button(master=control_frame, text='SAVE', command=save_btn_pressed, foreground=FGCOL, background=BGCOL, font=FONT)
 live_btn = tk.Button(master=control_frame, text=' live ', command=live_btn_pressed, foreground=FGCOL, background=BGCOL, font=FONT)
 songname_txt = tk.StringVar()
-songname_ent = tk.Entry(master=control_frame, textvariable=songname_txt, foreground=FGCOL, background=BGCOL, font=FONT)
-songname_ent.bind('<FocusIn>', handle_focus_in)
-songname_ent.bind('<FocusOut>', handle_focus_out)
+songname_ctrl = entry_with_label(control_frame, songname_txt, 'name')
 legend_lbl = tk.Label(master=control_frame, text='['+trax.EDITOR_NOTE_GUIDE+']', foreground=FGCOL, background=BGCOL, font=FONT, padx=4)
 size_lbl = tk.Label(master=control_frame, text=get_song_size_fmt(), foreground=FGCOL, background=BGCOL, font=FONT_SM, padx=4)
 
-load_btn.pack(side=tk.LEFT, anchor='n')
-save_btn.pack(side=tk.LEFT, anchor='n')
-live_btn.pack(side=tk.LEFT, anchor='n')
-songname_ent.pack(side=tk.LEFT, padx=4)
-size_lbl.pack(side=tk.RIGHT, anchor='e')
-legend_lbl.pack(side=tk.RIGHT, anchor='e')
+bpm_txt = tk.IntVar()
+bpm_ctrl = entry_with_label(control_frame, bpm_txt, 'bpm', width=4)
+
+load_btn.grid(row=0, column=0, sticky='new')
+save_btn.grid(row=0, column=1, sticky='new')
+live_btn.grid(row=1, column=0, sticky='nw')
+songname_ctrl.grid(row=1, column=1, columnspan=2)
+bpm_ctrl.grid(row=0, column=3, sticky='new')
+size_lbl.grid(row=0, column=4)
+legend_lbl.grid(row=1, column=3)
 control_frame.grid(row=0, column=0, columnspan=NUM_COLS, sticky='new', padx=4, pady=4)
 
 
@@ -220,9 +239,14 @@ def init_track_ctrls():
 
 
 beat_ctrls = init_track_ctrls()
+
 songname_txt.set(song.name)
 def update_songname(*args): song.name = songname_txt.get()
 songname_txt.trace('w', update_songname) 
+
+bpm_txt.set(song.bpm)
+def update_bpm(*args): song.bpm = bpm_txt.get(); print(f'new bpm: {song.bpm}')
+bpm_txt.trace('w', update_bpm)
 
 
 
