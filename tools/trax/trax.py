@@ -77,6 +77,10 @@ class GbaNote:
         if self._accidental != '-':
             return self._note + self._accidental
         return self._note
+    
+    def set_ext1(self, val):
+        pass
+
 
     def get_gba_freq(self):
         "return the value to write into REG_SOUNDnCNT_X(64h/6Ch/74h) for this note"
@@ -220,6 +224,9 @@ class SquareNote(GbaNote):
     
     def get_editor_ext_str(self):
         return f'{self.duty}-'
+    
+    def set_ext1(self, val):
+        self.duty = clamp(val, 0, 3)
 
 
 class WaveTblNote(GbaNote):

@@ -246,32 +246,44 @@ def update_curr_beat(newbeat):
         ctrl.configure(background=SELCELBGCOL if ix==(curr_trak+TRACK_COL_START) else SELROWBGCOL)
 
 
-def update_note(beat, trak, key):
+KEYCODE_ZERO = 48
+KEYCODE_NINE = 57
+
+def update_note(beat, trak, keysym, keycode, keystate):
     global last_octave
-    print('handling note update: ' + key)
+    print('handling note update: ' + keysym)
     ctrl = beat_ctrls[beat][trak+TRACK_COL_START]
     trak_note = pattern.tracks[trak][beat]
 
-    key = key.lower()   # backspace is BackSpace. not sure how consistently...
+    shift = (keystate & 1) != 0
+    is_digit = (keycode >= KEYCODE_ZERO and keycode <= KEYCODE_NINE)
 
-    if key in 'abcdefg':
-        trak_note.set_note(key.upper())
+    if keysym in 'abcdefg':
+        trak_note.set_note(keysym.upper())
         if not trak_note.active:
             trak_note.active = True
             trak_note.set_octave(last_octave)
 
-    elif key == 'numbersign':
+    elif keysym == 'numbersign':
         ACCIDENTALS = list('-#b')
         oldaccix = ACCIDENTALS.index(trak_note.get_accidental())
         newaccix = (oldaccix + 1) % len(ACCIDENTALS)
         trak_note.set_accidental(ACCIDENTALS[newaccix])
 
-    elif key in '01234567':
-        trak_note.set_octave(int(key))
-        last_octave = int(key)
+    elif is_digit:
+        digit = keycode - KEYCODE_ZERO
+        if not shift:
+            octave = trax.clamp(digit,0,7)
+            trak_note.set_octave(octave)
+            last_octave = octave
 
-    elif key == 'x' or key == 'minus' or key == 'backspace':
-        trak_note.active = not trak_note.active
+        else:
+            trak_note.set_ext1(digit)
+
+
+    elif keysym == 'x' or keysym == 'minus' or keysym == 'BackSpace' or keysym == 'Delete':
+        if trak_note.active:
+            trak_note.active = False
     
     ctrl['text'] = trak_note.get_editor_str()
 
@@ -285,6 +297,8 @@ def handle_keypress(evt):
 
     if is_focused_in_control > 0:
         return
+    
+    print('KEY: sym=%s, char=%s, code=%d, state=%04x' % (evt.keysym, evt.char, evt.keycode, evt.state))
 
     if evt.keysym == 'Up':
         update_curr_beat((curr_beat + pattern.nbeats - 1) % NUM_BEATS_VISIBLE)
@@ -301,7 +315,7 @@ def handle_keypress(evt):
         update_curr_beat(curr_beat)
 
     else:
-        update_note(curr_beat, curr_trak, evt.keysym)
+        update_note(curr_beat, curr_trak, evt.keysym, evt.keycode, evt.state)
 
 
 def handle_beat_ctrl_clicked(trackix, beatix):

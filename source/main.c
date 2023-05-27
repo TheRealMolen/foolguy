@@ -22,6 +22,8 @@
 _Static_assert((GFX_UISharedTilesLen / 32) < MAX_UI_TILES, "too many UI/BG tiles");
 
 
+#define D_TRAX_LIVE_UPDATE
+
 
 int bgang = 0;
 static const int BG_RADIUS = 9;
@@ -84,10 +86,15 @@ TraxPlayerState gTraxPlayer;
 
 void initMusic()
 {
+#ifdef D_TRAX_LIVE_UPDATE
 	// copy music to start of EWRAM so we can live update it
 	FastCopy32((void*)EWRAM, theme_trx_bin, theme_trx_bin_size / 4);
 
 	const TraxHdr* song = (const TraxHdr*)EWRAM;
+#else
+	const TraxHdr* song = (const TraxHdr*)theme_trx_bin;
+#endif
+
 	drawText((const char*)&song->magic, 1, 1);
 
 	trax_startPlaying(song, &gTraxPlayer);
@@ -102,15 +109,38 @@ typedef struct
 	u8	ttnf;
 } Guy;
 
-Guy gGuy;
-const u8 GuyAnim[] = { 0, 2, 4, 6, 4, 2, };
-const u8 GuyAnimLen = ARRAYCOUNT(GuyAnim);
+#define kGuyTimePerFrame 8
+static const u8 GuyAnim[] = { 0, 2, 4, 6, 4, 2, };
+static const u8 GuyAnimLen = ARRAYCOUNT(GuyAnim);
+
+Guy gGuys[] =
+{
+	{ 170,94, 0, 1 },
+	{ 117,7, 5, 3 },
+	{ 133,7, 3, 5 },
+	{ 151,7, 4, 2 },
+};
+static const u32 kNumGuys = ARRAYCOUNT(gGuys);
 
 void updateGuySprite(const Guy* guy, u32 sprite)
 {
 	gSprites[sprite].attr0 = OBJ_Y(guy->y) | ATTR0_COLOR_16 | ATTR0_SQUARE;
 	gSprites[sprite].attr1 = OBJ_X(guy->x) | ATTR1_SIZE_16;
 	gSprites[sprite].attr2 = OBJ_CHAR(GuyAnim[guy->f]);
+}
+
+void tickGuy(Guy* guy, u32 spriteIx)
+{
+		--guy->ttnf;
+		if (guy->ttnf == 0)
+		{
+			++guy->f;
+			if (guy->f >= GuyAnimLen)
+				guy->f = 0;
+			guy->ttnf = kGuyTimePerFrame;
+		}
+
+		updateGuySprite(guy, spriteIx);
 }
 
 int main()
@@ -125,7 +155,7 @@ int main()
 	REG_BG1CNT = BG_16_COLOR | SCREEN_BASE(UI_BASE) | BG_PRIORITY(2);
 	REG_BG2CNT = BG_16_COLOR | SCREEN_BASE(TXT_BASE) | BG_PRIORITY(1);
 
-	// alpha blend text layer (bg2) on top of window layer (bg1) to enable antialiasing
+	// alpha blend text layer (bg2) on top of window layer (bg1) to enable text antialiasing
 	REG_BLDCNT	= (1<<2)		// 1st target from bg2
 				| (1<<9)		// 2nd target from bg1
 				| (1<<6);		// alpha blend
@@ -149,11 +179,8 @@ int main()
 
 	initMusic();
 
-	gGuy.x = 170;
-	gGuy.y = 94;
-	gGuy.f = 0;
-	gGuy.ttnf = 8;
-	updateGuySprite(&gGuy, 0);
+	for (u32 i=0; i<kNumGuys; ++i)
+		updateGuySprite(&gGuys[i], i);
 
 	// blank out text bg
 	u16 zero = 0;
@@ -178,24 +205,20 @@ int main()
 
     for(;;)
 	{
-		--gGuy.ttnf;
-		if (gGuy.ttnf == 0)
-		{
-			++gGuy.f;
-			if (gGuy.f >= GuyAnimLen)
-				gGuy.f = 0;
-			gGuy.ttnf = 8;
-		}
-		updateGuySprite(&gGuy, 0);
-
 		VBlankIntrWait();
 
-		{
+#ifdef D_TRAX_LIVE_UPDATE
+		{ // show TRAX header when live update enabled - will be garbled in case of corruption
 			const TraxHdr* song = (const TraxHdr*)EWRAM;
-			drawText((const char*)&song->magic, 1, 1);
+			drawText((const char*)&song->magic, 1, 18);
 		}
+#endif
 
 		trax_tick(&gTraxPlayer);
+
+		for (u32 i=0; i<kNumGuys; ++i)
+			tickGuy(&gGuys[i], i);
+
 		dispatchSprites();
 
 		bgang += 30;
