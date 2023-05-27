@@ -1,8 +1,95 @@
-import os
+import os, socket
 import tkinter as tk
 import tkinter.filedialog as tkfiledlg
 
 import trax
+
+
+class LiveUpdater:
+    PORT = 51337
+    ADDR_START = 0x02000000
+
+    def __init__(self):
+        self.active = False
+        self.synced = False
+    
+    def activate(self, song):
+        if self.active:
+            print('WARN: trying to activate live update when it\'s already active')
+            return
+        
+        try:
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.connect(('127.0.0.1', LiveUpdater.PORT))
+            self.socket.settimeout(1)
+
+            self.active = True
+            self.synced = False
+
+            self.sync(song)
+
+            return True
+
+        except:
+            return False
+        
+
+    def deactivate(self):
+        if not self.active:
+            print('WARN: trying to deactivate live update when it\'s not active')
+            return
+        
+        self.socket.close()
+        self.socket = None
+        
+        self.active = False
+
+    
+    def sync(self, song):
+        if not self.active:
+            print('WARN: trying to sync when updater is inactive')
+            return
+
+        print('\n\n--- START SYNC -----------------')
+        bin = trax.compile_song(song)
+        for offs in range(0, len(bin), 2):
+            cmd = 'POKE %08X %02X%02X\n' % (LiveUpdater.ADDR_START + offs, int(bin[offs+1]), int(bin[offs]))
+            print(f'>{cmd}', end=None)
+            self.socket.sendall(cmd.encode())
+            res = self.socket.recv(1024)
+            if not res:
+                raise Exception('socket recv timed out');
+            print(f'<{res!r}')
+        print('--- FINISH SYNC -------------------\n')
+
+        self.synced = True
+        self.sync_bin = bin
+
+
+    def update(self, song):
+        if not self.active or not self.synced:
+            print('WARN: trying to sync when updater isn\'t active and synced')
+            return
+        
+        oldbin = self.sync_bin
+        newbin = trax.compile_song(song)
+        for offs in range(0, len(newbin), 2):
+            if (oldbin[offs] == newbin[offs]) and (oldbin[offs+1] == newbin[offs+1]):
+                continue
+
+            cmd = 'POKE %08X %02X%02X\n' % (LiveUpdater.ADDR_START + offs, int(newbin[offs+1]), int(newbin[offs]))
+            print(f'>{cmd}', end=None)
+            self.socket.sendall(cmd.encode())
+            res = self.socket.recv(1024)
+            if not res:
+                raise Exception('socket recv timed out');
+            print(f'<{res!r}')
+
+        self.sync_bin = newbin
+    
+        
+
+
 
 DEFAULT_DATA_DIR = os.path.dirname(__file__) + '/../../raw/music/'
 os.makedirs(DEFAULT_DATA_DIR, exist_ok=True)
@@ -23,6 +110,7 @@ SELROWBGCOL = '#083018'
 SELCELBGCOL = '#106030'
 FGCOL       = '#77e099'
 IDCOL       = '#888888'
+LIVECOL     = '#bb2277'
 
 
 song = trax.Song()
@@ -32,6 +120,9 @@ pattern = song.patterns[0]
 curr_beat = -1
 curr_trak = 0
 last_octave = 3
+
+
+live_updater = LiveUpdater()
 
 
 
@@ -57,6 +148,15 @@ def save_btn_pressed():
     if outfilename:
         song.save_to_file(outfilename)
 
+def live_btn_pressed():
+    if not live_updater.active:
+        if live_updater.activate(song):
+            live_btn.configure(text='!LIVE!', bg=LIVECOL)
+    else:
+        live_updater.deactivate()
+        live_btn.configure(text=' live ', bg=BGCOL)
+    
+
 
 
 
@@ -77,6 +177,7 @@ control_frame = tk.Frame(bg=BGCOL)
 
 load_btn = tk.Button(master=control_frame, text='LOAD', command=load_btn_pressed, foreground=FGCOL, background=BGCOL, font=FONT)
 save_btn = tk.Button(master=control_frame, text='SAVE', command=save_btn_pressed, foreground=FGCOL, background=BGCOL, font=FONT)
+live_btn = tk.Button(master=control_frame, text=' live ', command=live_btn_pressed, foreground=FGCOL, background=BGCOL, font=FONT)
 songname_txt = tk.StringVar()
 songname_ent = tk.Entry(master=control_frame, textvariable=songname_txt, foreground=FGCOL, background=BGCOL, font=FONT)
 songname_ent.bind('<FocusIn>', handle_focus_in)
@@ -86,6 +187,7 @@ size_lbl = tk.Label(master=control_frame, text=get_song_size_fmt(), foreground=F
 
 load_btn.pack(side=tk.LEFT, anchor='n')
 save_btn.pack(side=tk.LEFT, anchor='n')
+live_btn.pack(side=tk.LEFT, anchor='n')
 songname_ent.pack(side=tk.LEFT, padx=4)
 size_lbl.pack(side=tk.RIGHT, anchor='e')
 legend_lbl.pack(side=tk.RIGHT, anchor='e')
@@ -150,6 +252,8 @@ def update_note(beat, trak, key):
     ctrl = beat_ctrls[beat][trak+TRACK_COL_START]
     trak_note = pattern.tracks[trak][beat]
 
+    key = key.lower()   # backspace is BackSpace. not sure how consistently...
+
     if key in 'abcdefg':
         trak_note.set_note(key.upper())
         if not trak_note.active:
@@ -158,18 +262,21 @@ def update_note(beat, trak, key):
 
     elif key == 'numbersign':
         ACCIDENTALS = list('-#b')
-        oldaccix = ACCIDENTALS.index(trak_note.accidental)
+        oldaccix = ACCIDENTALS.index(trak_note.get_accidental())
         newaccix = (oldaccix + 1) % len(ACCIDENTALS)
-        trak_note.accidental = ACCIDENTALS[newaccix]
+        trak_note.set_accidental(ACCIDENTALS[newaccix])
 
     elif key in '01234567':
         trak_note.set_octave(int(key))
         last_octave = int(key)
 
-    elif key in 'x-':
+    elif key == 'x' or key == 'minus' or key == 'backspace':
         trak_note.active = not trak_note.active
     
     ctrl['text'] = trak_note.get_editor_str()
+
+    if live_updater.active:
+        live_updater.update(song)
 
 
 

@@ -67,6 +67,8 @@ class GbaNote:
 
     def set_accidental(self, acc):
         self._accidental = acc
+    def get_accidental(self):
+        return self._accidental
 
     def set_octave(self, octave):
         self._octave = octave

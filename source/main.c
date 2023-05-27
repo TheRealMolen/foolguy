@@ -18,6 +18,7 @@
 #include "gen/GUI_font.h"
 #include "gen/gfx_defs.h"
 #include "gen/SPR_guy.h"
+#include "theme_trx_bin.h"
 _Static_assert((GFX_UISharedTilesLen / 32) < MAX_UI_TILES, "too many UI/BG tiles");
 
 
@@ -79,6 +80,20 @@ void dispatchSprites()
 }
 
 
+TraxPlayerState gTraxPlayer;
+
+void initMusic()
+{
+	// copy music to start of EWRAM so we can live update it
+	FastCopy32((void*)EWRAM, theme_trx_bin, theme_trx_bin_size / 4);
+
+	const TraxHdr* song = (const TraxHdr*)EWRAM;
+	drawText((const char*)&song->magic, 1, 1);
+
+	trax_startPlaying(song, &gTraxPlayer);
+}
+
+
 typedef struct
 {
 	u16 x;
@@ -86,67 +101,6 @@ typedef struct
 	u8	f;
 	u8	ttnf;
 } Guy;
-
-
-const u16 CHOON[] =
-{
-	SNDFREQ(262),
-	SNDFREQ(311),
-	SNDFREQ(392),
-	SNDFREQ(440),
-	SNDFREQ(524),
-	SNDFREQ(784),
-};
-u32 gNextNote = 0;
-u32 gTimeSinceLastNote = 10000;
-
-const u16 BASSCHOON[] =
-{
-	SNDFREQ(131),
-	SNDFREQ(110),
-};
-u32 gNextBassNote = 0;
-
-u32 gNoteIx = 0;
-
-void tickChoon()
-{
-	++gTimeSinceLastNote;
-
-	if (gTimeSinceLastNote == 8 || gTimeSinceLastNote == 16)
-	{
-		++gNoteIx;
-		u32 x = sintbl_256[(gNoteIx * 113) & 0xff] + (1<<14);
-		if (x > (1<<13))
-		{
-			u16 vel = x >> 11;
-			REG_SND4CTRL = (vel << 12) | 0x0100; //fast decay
-			REG_SND4TIMBRE = SND_TRIGGER | 0x0030 | ((x>>2)&3); //trigger, rate:2f, 7-stage, pre-scaler:/16
-		}
-	}
-
-	if (gTimeSinceLastNote < 16)
-		return;
-
-	gTimeSinceLastNote = 0;
-	
-	REG_SND1CTRL = 0xe100; //duty=50%,envelope decrement
-	REG_SND1FREQ = SND_TRIGGER | CHOON[gNextNote];
-
-	if (gNextNote == 0)
-	{
-		REG_SND2CTRL = 0xf7c0; //duty=50%,envelope decrement
-		REG_SND2FREQ = SND_TRIGGER | BASSCHOON[gNextBassNote];
-
-		gNextBassNote++;
-		if (gNextBassNote >= ARRAYCOUNT(BASSCHOON))
-			gNextBassNote = 0;
-	}
-
-	++gNextNote;
-	if (gNextNote >= ARRAYCOUNT(CHOON))
-		gNextNote = 0;
-}
 
 Guy gGuy;
 const u8 GuyAnim[] = { 0, 2, 4, 6, 4, 2, };
@@ -193,6 +147,8 @@ int main()
 
 	initSprites();
 
+	initMusic();
+
 	gGuy.x = 170;
 	gGuy.y = 94;
 	gGuy.f = 0;
@@ -202,7 +158,7 @@ int main()
 	// blank out text bg
 	u16 zero = 0;
 	FastFill16(MAP_BASE_ADR(TXT_BASE), &zero, 1024);
-
+	
 	drawText("HELLO ME DUCKS\n"
 			"OH WHAT A LOVELY\n"
 			"BUNCH O COCONUTS\n"
@@ -220,11 +176,6 @@ int main()
 
 	updateBg0();
 
-
-	REG_SNDSTATUS = SNDSTATUS_ENABLE;
-	REG_SNDMIX2 = SNDMIX2_DMGVOL_MAX;
-	REG_SNDMIX = SNDMIX_LVOL(7) | SNDMIX_RVOL(7) | SNDMIX_SND1_C | SNDMIX_SND2_C | SNDMIX_SND4_C;
-
     for(;;)
 	{
 		--gGuy.ttnf;
@@ -239,7 +190,12 @@ int main()
 
 		VBlankIntrWait();
 
-		tickChoon();
+		{
+			const TraxHdr* song = (const TraxHdr*)EWRAM;
+			drawText((const char*)&song->magic, 1, 1);
+		}
+
+		trax_tick(&gTraxPlayer);
 		dispatchSprites();
 
 		bgang += 30;

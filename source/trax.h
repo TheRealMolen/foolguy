@@ -11,38 +11,53 @@ typedef struct
     u32 magic;  // TRAX
     u8  version;
     u8  patternCount;
-    u16 ticksPerBeat;
+    u16 ticksPerStep;
 
     // TODO: song def
     // TODO: snd3 instrument def
     
-} ALIGN(4) TraxHdr;
+} TraxHdr;
 
 
 typedef struct
 {
-    u16 sqr1_ctrl;
-    u16 sqr1_freq;
+    u16 sqr1Ctrl;
+    u16 sqr1Freq;
 
-    u16 sqr2_ctrl;
-    u16 sqr2_freq;
+    u16 sqr2Ctrl;
+    u16 sqr2Freq;
 
-    u16 wtbl_ctrl;
-    u16 wtbl_freq;
+    u16 wtblCtrl;
+    u16 wtblFreq;
 
-    u16 noiz_ctrl;
-    u16 noiz_freq;
+    u16 noizCtrl;
+    u16 noizTimbre;
 
-} ALIGN(4) TraxBeat;
+} TraxStep;
 
 
 typedef struct
 {
-    u8  numBeats;
+    u8          numSteps;
 
-    u8  dummy[3];
+    u8          _unused[3];
 
-    TraxBeat    beats[0];
+    TraxStep    steps[0];
 
-} ALIGN(4) TraxPattern;
+} TraxPattern;
 
+
+
+typedef struct
+{
+    const TraxHdr* song;
+
+    u16     ticksTillNextStep;
+    u8      curPat;
+    u8      nextStep;
+
+} TraxPlayerState;
+
+
+void trax_startPlaying(const void* song, TraxPlayerState* state);
+void trax_tick(TraxPlayerState* state);

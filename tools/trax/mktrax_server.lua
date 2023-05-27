@@ -49,6 +49,7 @@ function sock_receive()
             local oldval = emu:read16(addr)
             emu:write16(addr, val)
             print("  .. done! old val was " .. oldval)
+            conn:send("OK\n")
         else
             print("WRN: invalid command: '" .. packet .. "'")
         end

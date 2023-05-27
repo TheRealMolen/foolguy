@@ -57,11 +57,6 @@ LIBS	:= -lmm -lgba
 #---------------------------------------------------------------------------------
 LIBDIRS	:=	$(LIBGBA)
 
-#---------------------------------------------------------------------------------
-# no real need to edit anything past this point unless you need to add additional
-# rules for different file extensions
-#---------------------------------------------------------------------------------
-
 
 ifneq ($(BUILD),$(notdir $(CURDIR)))
 
@@ -103,6 +98,11 @@ SPRITE_PNGLIST	:=	SPR_guy.png
 SPRITE_PNGFILES	:=	$(foreach png,$(SPRITE_PNGLIST),$(SPRITE_PNGDIR)/$(png))
 SPRITE_SFILES	:=	$(foreach png,$(SPRITE_PNGLIST),gen/$(subst .png,.s,$(png)))
 
+TRAX_DIR		:= raw/music
+TRAX_LIST		:= theme.trx
+TRAX_FILES		:= $(foreach trx,$(TRAX_LIST),$(TRAX_DIR)/$(trx))
+TRAX_BINFILES	:= $(foreach trx,$(TRAX_LIST),$(trx).bin)
+
 
 #---------------------------------------------------------------------------------
 
@@ -114,7 +114,7 @@ export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
 
 export DEPSDIR	:=	$(CURDIR)/$(BUILD)
 
-DATAFILES	:= $(UI_PNGFILES)
+DATAFILES	:= $(UI_PNGFILES) $(TRAX_FILES)
 
 CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 CFILES		+=	$(PALCFILES) $(TRIGCFILES)
@@ -122,6 +122,7 @@ CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 SFILES		+=	$(UI_SFILE) $(FONTSFILES) $(SPRITE_SFILES)
 BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
+BINFILES	+=	$(TRAX_BINFILES)
 
 GENFILES	:= $(foreach cfile,$(PALCFILES),source/$(cfile))
 GENFILES	+= $(GENDIR)/$(UI_SHARED).s
@@ -130,27 +131,16 @@ GENFILES	+= $(foreach sfile,$(FONTSFILES),source/$(sfile))
 GENFILES	+= $(foreach sfile,$(SPRITE_SFILES),source/$(sfile))
 GENFILES	+= $(GFX_DEF_H)
 
-XTRATOOLS	:= $(GRIT) $(wildcard tools/*.py)
+GENBINFILES	:= $(foreach bin,$(TRAX_BINFILES),build/$(bin))
+
+XTRATOOLS	:= $(GRIT) $(wildcard tools/*.py) $(wildcard tools/trax/*.py)
 
 ifneq ($(strip $(MUSIC)),)
 	export AUDIOFILES	:=	$(foreach dir,$(notdir $(wildcard $(MUSIC)/*.*)),$(CURDIR)/$(MUSIC)/$(dir))
 	BINFILES += soundbank.bin
 endif
 
-#---------------------------------------------------------------------------------
-# use CXX for linking C++ projects, CC for standard C
-#---------------------------------------------------------------------------------
-ifeq ($(strip $(CPPFILES)),)
-#---------------------------------------------------------------------------------
-	export LD	:=	$(CC)
-#---------------------------------------------------------------------------------
-else
-#---------------------------------------------------------------------------------
-	export LD	:=	$(CXX)
-#---------------------------------------------------------------------------------
-endif
-#---------------------------------------------------------------------------------
-
+export LD	:=	$(CC)
 export OFILES_BIN := $(addsuffix .o,$(BINFILES))
 
 export OFILES_SOURCES := $(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
@@ -169,7 +159,7 @@ export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
 #---------------------------------------------------------------------------------
 # entry point - jumps into build/ and re-runs this makefile, dropping into the second part below
-$(BUILD): $(GENFILES) Makefile $(XTRATOOLS) $(DATAFILES)
+$(BUILD): $(GENFILES) Makefile $(XTRATOOLS) $(DATAFILES) $(GENBINFILES)
 	@echo all generated deps: $(GENFILES)
 	@echo all extra tools: $(XTRATOOLS)
 	@echo all object files: $(OFILES)
@@ -222,6 +212,11 @@ $(GFX_DEF_H): $(GFX_DEF_TEMPL) Makefile
 	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
 	python tools/xpand.py -o $@ $< $(GFX_DEFS)
 
+# music trx
+build/%.trx.bin: $(TRAX_DIR)/%.trx
+	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
+	python tools/trax/trx2bin.py -o $@ $< 
+
 
 #---------------------------------------------------------------------------------
 
@@ -256,7 +251,7 @@ soundbank.bin soundbank.h : $(AUDIOFILES)
 #---------------------------------------------------------------------------------
 %.bin.o	%_bin.h :	%.bin
 	@echo $(notdir $<)
-	@$(bin2o)
+	$(bin2o)
 
 
 # NB. missing build/gen folder, but that's probably ok?
