@@ -1,4 +1,4 @@
-import os, socket
+import math, os, socket, threading
 import tkinter as tk
 import tkinter.filedialog as tkfiledlg
 
@@ -12,6 +12,10 @@ class LiveUpdater:
     def __init__(self):
         self.active = False
         self.synced = False
+
+        self.syncing = False
+        self.bytes_to_sync = 100
+        self.bytes_sunc = 0
     
     def activate(self, song):
         if self.active:
@@ -49,21 +53,41 @@ class LiveUpdater:
         if not self.active:
             print('WARN: trying to sync when updater is inactive')
             return
+        if self.syncing:
+            return
 
+        self.syncing = True
         print('\n\n--- START SYNC -----------------')
+
         bin = trax.compile_song(song)
+        self.bytes_sunc = 0
+        self.bytes_to_sync = len(bin)
+
+        self.sync_thread = threading.Thread(target=self._syncThread, args=[bin])
+        self.sync_thread.start()
+
+    def get_sync_progress_pct(self):
+        if self.syncing:
+            return math.floor(((100.0 * self.bytes_sunc) / self.bytes_to_sync) + 0.5)
+        return -1
+
+    def _syncThread(self, bin):
+        print('[[[ start sync thread')
+
         for offs in range(0, len(bin), 2):
             cmd = 'POKE %08X %02X%02X\n' % (LiveUpdater.ADDR_START + offs, int(bin[offs+1]), int(bin[offs]))
-            print(f'>{cmd}', end=None)
+            print(f'>{cmd}', end='')
             self.socket.sendall(cmd.encode())
             res = self.socket.recv(1024)
             if not res:
                 raise Exception('socket recv timed out');
             print(f'<{res!r}')
-        print('--- FINISH SYNC -------------------\n')
+            self.bytes_sunc += 2
 
-        self.synced = True
-        self.sync_bin = bin
+        print('--- FINISH SYNC -------------------\n')
+        self._on_synced(bin)
+        print('[[[ end sync thread')
+        self.syncing = False
 
 
     def update(self, song):
@@ -78,14 +102,20 @@ class LiveUpdater:
                 continue
 
             cmd = 'POKE %08X %02X%02X\n' % (LiveUpdater.ADDR_START + offs, int(newbin[offs+1]), int(newbin[offs]))
-            print(f'>{cmd}', end=None)
+            print(f'>{cmd}', end='')
             self.socket.sendall(cmd.encode())
             res = self.socket.recv(1024)
             if not res:
                 raise Exception('socket recv timed out');
             print(f'<{res!r}')
 
-        self.sync_bin = newbin
+        self._on_synced(newbin)
+
+    
+    def _on_synced(self, bin):
+        self.synced = True
+        self.sync_bin = bin
+        size_lbl.configure(text='%Xh byt' % len(bin))
     
         
 
@@ -117,7 +147,7 @@ song = trax.Song()
 pattern = song.patterns[0]
 
 
-curr_beat = -1
+curr_step = -1
 curr_trak = 0
 last_octave = 3
 
@@ -149,10 +179,24 @@ def save_btn_pressed():
     if outfilename:
         song.save_to_file(outfilename)
 
+
+def live_sync_progress():
+    if live_updater.syncing:
+        progress = '%d%%' % live_updater.get_sync_progress_pct()
+        live_btn.configure(text=progress)
+        print(progress)
+        window.after(100, live_sync_progress)
+        return
+    
+    live_btn.configure(text='!LIVE!', bg=LIVECOL)
+
 def live_btn_pressed():
+    if live_updater.syncing:
+        return
+    
     if not live_updater.active:
         if live_updater.activate(song):
-            live_btn.configure(text='!LIVE!', bg=LIVECOL)
+            window.after(20, live_sync_progress)
     else:
         live_updater.deactivate()
         live_btn.configure(text=' live ', bg=BGCOL)
@@ -165,13 +209,16 @@ def get_song_size_fmt():
     return '%0xh byt' % song.calc_byte_size()
 
 
-is_focused_in_control = 0
+# keeping track of when we're entering text into an entry box so we can suppress the global keyboard handler
+is_focused_in_entry = 0
 def handle_focus_in(*args):
-    global is_focused_in_control
-    is_focused_in_control += 1
+    global is_focused_in_entry
+    is_focused_in_entry += 1
 def handle_focus_out(*args):
-    global is_focused_in_control
-    is_focused_in_control -= 1
+    global is_focused_in_entry
+    is_focused_in_entry -= 1
+
+entry_mode = None
 
 
 def entry_with_label(parent, textvar, label_text, **kwargs):
@@ -194,11 +241,11 @@ control_frame = tk.Frame(bg=BGCOL)
 
 load_btn = tk.Button(master=control_frame, text='LOAD', command=load_btn_pressed, foreground=FGCOL, background=BGCOL, font=FONT)
 save_btn = tk.Button(master=control_frame, text='SAVE', command=save_btn_pressed, foreground=FGCOL, background=BGCOL, font=FONT)
-live_btn = tk.Button(master=control_frame, text=' live ', command=live_btn_pressed, foreground=FGCOL, background=BGCOL, font=FONT)
+live_btn = tk.Button(master=control_frame, text='live', width=6, command=live_btn_pressed, foreground=FGCOL, background=BGCOL, font=FONT)
 songname_txt = tk.StringVar()
 songname_ctrl = entry_with_label(control_frame, songname_txt, 'name')
-legend_lbl = tk.Label(master=control_frame, text='['+trax.EDITOR_NOTE_GUIDE+']', foreground=FGCOL, background=BGCOL, font=FONT, padx=4)
-size_lbl = tk.Label(master=control_frame, text=get_song_size_fmt(), foreground=FGCOL, background=BGCOL, font=FONT_SM, padx=4)
+legend_lbl = tk.Label(master=control_frame, text=trax.EDITOR_NOTE_GUIDE, foreground=FGCOL, background=BGCOL, font=FONT)
+size_lbl = tk.Label(master=control_frame, text='', foreground=FGCOL, background=BGCOL, font=FONT_SM, padx=4)
 
 bpm_txt = tk.IntVar()
 bpm_ctrl = entry_with_label(control_frame, bpm_txt, 'bpm', width=4)
@@ -206,46 +253,51 @@ bpm_ctrl = entry_with_label(control_frame, bpm_txt, 'bpm', width=4)
 load_btn.grid(row=0, column=0, sticky='new')
 save_btn.grid(row=0, column=1, sticky='new')
 live_btn.grid(row=1, column=0, sticky='nw')
-songname_ctrl.grid(row=1, column=1, columnspan=2)
-bpm_ctrl.grid(row=0, column=3, sticky='new')
+songname_ctrl.grid(row=0, column=2, columnspan=2)
+bpm_ctrl.grid(row=1, column=1, sticky='ew', padx=2)
 size_lbl.grid(row=0, column=4)
-legend_lbl.grid(row=1, column=3)
+legend_lbl.grid(row=1, column=4, sticky='se', padx=2)
 control_frame.grid(row=0, column=0, columnspan=NUM_COLS, sticky='new', padx=4, pady=4)
 
 
 def init_track_ctrls():
-    beat_ctrls = []
-    for beat in range(NUM_BEATS_VISIBLE):
+    step_ctrls = []
+    for stepix in range(NUM_BEATS_VISIBLE):
 
         ctrls = []
 
         e = tk.Label(width=3, font=FONT, background=BGCOL, foreground=IDCOL)
-        e.configure(text=f' %02d' % beat)
-        e.grid(row=beat+BEAT_ROW_START, column=0)
+        e.configure(text=f' %02d' % stepix)
+        e.grid(row=stepix+BEAT_ROW_START, column=0)
         ctrls.append(e)
 
         for track in range(trax.NUM_TRACKS):
             e = tk.Label(width=11, font=FONT, background=BGCOL, foreground=FGCOL, padx=6, text=trax.EMPTY_EDITOR_NOTE, cursor='cross_reverse')
-            e.grid(row=beat+BEAT_ROW_START, column=track+TRACK_COL_START)
+            e.grid(row=stepix+BEAT_ROW_START, column=track+TRACK_COL_START)
 
-            onclick = lambda _, track=track, beat=beat: handle_beat_ctrl_clicked(track, beat)
+            onclick = lambda _, track=track, step=stepix: handle_step_ctrl_clicked(track, step)
             e.bind('<Button-1>', onclick)
 
             ctrls.append(e)
 
-        beat_ctrls.append(ctrls)
+        step_ctrls.append(ctrls)
 
-    return beat_ctrls
+    return step_ctrls
 
 
-beat_ctrls = init_track_ctrls()
+step_ctrls = init_track_ctrls()
 
 songname_txt.set(song.name)
 def update_songname(*args): song.name = songname_txt.get()
 songname_txt.trace('w', update_songname) 
 
 bpm_txt.set(song.bpm)
-def update_bpm(*args): song.bpm = bpm_txt.get(); print(f'new bpm: {song.bpm}')
+def update_bpm(*args):
+    song.bpm = bpm_txt.get()
+    print(f'new bpm: {song.bpm}')
+    if live_updater.active:
+        live_updater.update(song)
+
 bpm_txt.trace('w', update_bpm)
 
 
@@ -253,36 +305,92 @@ bpm_txt.trace('w', update_bpm)
 def set_active_pattern(patix):
     global pattern
     pattern = song.patterns[patix]
-    for beatix in range(pattern.nbeats):
+    for stepix in range(pattern.nsteps):
         for trackix in range(len(pattern.tracks)):
-            ctrl = beat_ctrls[beatix][trackix+TRACK_COL_START]
-            ctrl['text'] = pattern.tracks[trackix][beatix].get_editor_str()
+            ctrl = step_ctrls[stepix][trackix+TRACK_COL_START]
+            ctrl['text'] = pattern.tracks[trackix][stepix].get_editor_str()
 
 
-def update_curr_beat(newbeat):
-    global curr_beat, curr_trak
-    if curr_beat >= 0:
-        for ctrl in beat_ctrls[curr_beat]:
+def update_curr_step(newstep):
+    global curr_step, curr_trak
+    if curr_step >= 0:
+        for ctrl in step_ctrls[curr_step]:
             ctrl.configure(background=BGCOL)
 
-    curr_beat = newbeat
-    for ix,ctrl in enumerate(beat_ctrls[curr_beat]):
+    curr_step = newstep
+    for ix,ctrl in enumerate(step_ctrls[curr_step]):
         ctrl.configure(background=SELCELBGCOL if ix==(curr_trak+TRACK_COL_START) else SELROWBGCOL)
+
+
+partial_modal_entry = ''
+
+def change_entry_mode(new_mode):
+    global entry_mode, partial_modal_entry
+    entry_mode = new_mode
+    partial_modal_entry = ''
+    if entry_mode:
+        print(f'--+ entry mode now {entry_mode}')
+    else:
+        print(f'--+ default entry mode')
+
+def update_note_for_mode(note, mode, keysym):
+    HEX = '0123456789abcdef'
+    val = HEX.index(keysym.lower())
+    if val < 0:
+        return False
+    
+    if mode == 'vel':
+        note.set_vel(val)
+    elif mode == 'env':
+        note.set_env(val)
+    elif mode == 'ext1':
+        note.set_ext1(val)
+    elif mode == 'ext2':
+        note.set_ext2(val)
+    elif mode == 'len':
+        global partial_modal_entry
+        if partial_modal_entry == '':
+            partial_modal_entry = keysym.lower()
+            return False
+        
+        val = int(partial_modal_entry + keysym, 16)
+        note.set_len(val)
+        partial_modal_entry = ''        
+
+    else:
+        raise Exception(f'unhandled input mode {mode}')
+    
+    return True
 
 
 KEYCODE_ZERO = 48
 KEYCODE_NINE = 57
 
-def update_note(beat, trak, keysym, keycode, keystate):
+def update_note(step, trak, keysym):
     global last_octave
-    print('handling note update: ' + keysym)
-    ctrl = beat_ctrls[beat][trak+TRACK_COL_START]
-    trak_note = pattern.tracks[trak][beat]
+    #print('handling note update: ' + keysym)
+    ctrl = step_ctrls[step][trak+TRACK_COL_START]
+    trak_note = pattern.tracks[trak][step]
 
-    shift = (keystate & 1) != 0
-    is_digit = (keycode >= KEYCODE_ZERO and keycode <= KEYCODE_NINE)
+    # handle changing entry mode
+    if trak_note.active and keysym == 'E':
+        change_entry_mode('env')
+    elif trak_note.active and keysym == 'V':
+        change_entry_mode('vel')
+    elif trak_note.active and keysym == 'X':
+        change_entry_mode('ext1')
+    elif trak_note.active and keysym == 'Z':
+        change_entry_mode('ext2')
+    elif trak_note.active and keysym == 'L':
+        change_entry_mode('len')
 
-    if keysym in 'abcdefg':
+    elif entry_mode is not None:
+        if keysym == 'space' or keysym == 'Escape':
+            change_entry_mode(None)
+        elif update_note_for_mode(trak_note, entry_mode, keysym):
+            change_entry_mode(None)
+
+    elif keysym in 'abcdefg':
         trak_note.set_note(keysym.upper())
         if not trak_note.active:
             trak_note.active = True
@@ -294,22 +402,22 @@ def update_note(beat, trak, keysym, keycode, keystate):
         newaccix = (oldaccix + 1) % len(ACCIDENTALS)
         trak_note.set_accidental(ACCIDENTALS[newaccix])
 
-    elif is_digit:
-        digit = keycode - KEYCODE_ZERO
-        if not shift:
-            octave = trax.clamp(digit,0,7)
-            trak_note.set_octave(octave)
-            last_octave = octave
+    elif keysym in '01234567':
+        octave = int(keysym)
+        trak_note.set_octave(octave)
+        last_octave = octave
 
-        else:
-            trak_note.set_ext1(digit)
-
-
-    elif keysym == 'x' or keysym == 'minus' or keysym == 'BackSpace' or keysym == 'Delete':
+    elif keysym == 'minus' or keysym == 'BackSpace' or keysym == 'Delete':
         if trak_note.active:
             trak_note.active = False
     
-    ctrl['text'] = trak_note.get_editor_str()
+    if entry_mode is None:
+        ctrl['text'] = trak_note.get_editor_str()
+    else:
+        txt = entry_mode
+        if partial_modal_entry != '':
+            txt += ': ' + partial_modal_entry
+        ctrl['text'] = txt
 
     if live_updater.active:
         live_updater.update(song)
@@ -319,42 +427,48 @@ def update_note(beat, trak, keysym, keycode, keystate):
 def handle_keypress(evt):
     global curr_trak
 
-    if is_focused_in_control > 0:
+    if is_focused_in_entry > 0:
+        return
+    if evt.keysym.startswith('Shift'):
         return
     
-    print('KEY: sym=%s, char=%s, code=%d, state=%04x' % (evt.keysym, evt.char, evt.keycode, evt.state))
+    #print('KEY: sym=%s, char=%s, code=%d, state=%04x' % (evt.keysym, evt.char, evt.keycode, evt.state))
 
     if evt.keysym == 'Up':
-        update_curr_beat((curr_beat + pattern.nbeats - 1) % NUM_BEATS_VISIBLE)
+        update_curr_step((curr_step + pattern.nsteps - 1) % NUM_BEATS_VISIBLE)
+        change_entry_mode(None)
 
     elif evt.keysym == 'Down':
-        update_curr_beat((curr_beat + 1) % NUM_BEATS_VISIBLE)
+        update_curr_step((curr_step + 1) % NUM_BEATS_VISIBLE)
+        change_entry_mode(None)
 
     elif evt.keysym == 'Left':
         curr_trak = (curr_trak + trax.NUM_TRACKS - 1) % trax.NUM_TRACKS
-        update_curr_beat(curr_beat)
+        update_curr_step(curr_step)
+        change_entry_mode(None)
 
     elif evt.keysym == 'Right':
         curr_trak = (curr_trak + 1) % trax.NUM_TRACKS
-        update_curr_beat(curr_beat)
+        update_curr_step(curr_step)
+        change_entry_mode(None)
 
     else:
-        update_note(curr_beat, curr_trak, evt.keysym, evt.keycode, evt.state)
+        update_note(curr_step, curr_trak, evt.keysym)
 
 
-def handle_beat_ctrl_clicked(trackix, beatix):
+def handle_step_ctrl_clicked(trackix, stepix):
     # force a defocus of any focused widget
     window.focus_set()
 
     global curr_trak
     curr_trak = trackix
-    update_curr_beat(beatix)
+    update_curr_step(stepix)
     
     
 
 window.bind('<Key>', handle_keypress)
 
-update_curr_beat(0)
+update_curr_step(0)
 
 window.mainloop()
 

@@ -1,0 +1,37 @@
+TRAX 0.1
+name=42da4lr
+bpm=150
+
+!Pattern id=0 steps=32 tracks=4
+C-1 vF d1 c2	-	-	G#1 vF d1 s0
+-	-	-	-
+-	-	-	C-7 vF d1 s0
+-	-	-	-
+-	-	C-3 l66 vF d2 i0	G-7 vF d2 s0
+-	-	-	-
+-	-	-	E#6 vF d1 s0
+-	-	-	-
+C-1 vF d1 c2	-	-	G#1 v6 d3 s0
+-	-	-	-
+-	-	-	E-4 vF d1 s0
+-	-	-	-
+-	-	C-3 l66 vF d2 i0	G-1 vA d1 s0
+-	-	-	-
+-	-	-	D-3 vF d1 s0
+-	-	-	-
+C-1 vF d1 c1	-	-	G#1 v8 d2 s0
+-	-	-	-
+-	-	-	E-4 vF d1 s0
+-	-	-	-
+-	-	C-4 l101 vF d2 i0	G-1 v7 d2 s0
+-	-	-	-
+-	-	-	F-3 vF d1 s0
+-	-	-	-
+C-1 vF d1 c1	-	-	G-1 v8 d2 s0
+-	-	-	-
+-	-	-	G-2 vF d1 s0
+-	-	-	-
+-	-	Bb2 l65 vF d2 i0	G-1 v9 d2 s0
+-	-	-	-
+-	-	-	G#1 vF d1 s0
+-	-	-	-

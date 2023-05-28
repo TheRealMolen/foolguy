@@ -1,37 +1,37 @@
 TRAX 0.1
 name=Main Theme
-bpm=120
+bpm=100
 
-!Pattern id=0 beats=32 tracks=4
-C-5 vF d3 c1	C-3 vC d4 c2	-	G#3 vF d2 s0
+!Pattern id=0 steps=32 tracks=4
+C-5 v8 d1 c1	C-2 vF d3 c2	-	G#3 vF d2 s0
 -	-	-	-
-G-5 vE d3 c1	-	A-5 l65 v3 d2 i3	-
+G-5 v8 d1 c1	-	A-4 l65 vF d2 i0	-
 -	-	-	-
-C-5 vF d3 c1	D-3 vC d4 c2	-	-
+C-5 v8 d1 c1	D-2 vF d3 c2	-	-
+-	-	-	G-0 v6 d2 s0
+G-5 v8 d1 c1	-	-	F#2 vF d2 s0
+-	B-1 vD d2 c2	-	-
+C-5 v8 d1 c1	C-2 vC d3 c2	-	G-7 v6 d6 s0
 -	-	-	-
-G-5 vE d3 c1	-	-	F#2 vF d2 s0
+G-5 v8 d1 c1	-	-	-
 -	-	-	-
-C-5 vF d3 c1	E-3 vC d4 c2	-	-
+C-5 v8 d1 c1	Eb2 vC d3 c2	-	G-7 vF d2 s0
+-	-	-	G-7 vF d2 s0
+G-5 v8 d1 c1	-	F-4 l100 vF d0 i0	G-0 vF d2 s0
+G-5 v9 d2 c2	-	-	-
+C-5 v8 d1 c1	C-2 vC d3 c2	-	-
+-	-	-	G-7 vF d2 s0
+G-5 v8 d1 c1	-	-	-
+-	C-3 vD d2 c2	-	-
+C-5 v8 d1 c1	Eb2 vC d3 c2	-	G-0 vF d2 s0
 -	-	-	-
-G-5 vE d3 c1	-	-	-
+G-5 v8 d1 c1	-	-	-
+-	-	-	G-7 vF d2 s0
+C-5 v8 d1 c1	A-3 vC d3 c2	-	-
 -	-	-	-
-C-5 vF d3 c1	F-3 vC d4 c2	-	-
+G-5 v8 d1 c1	-	D-4 l16 vF d1 i0	G-7 vF d2 s0
 -	-	-	-
-G-5 vE d3 c1	-	-	-
--	-	-	-
-C-5 vF d3 c1	G-3 vC d4 c2	-	-
--	-	-	-
-G-5 vE d3 c1	-	-	-
--	-	-	-
-C-5 vF d3 c1	A-4 vC d4 c2	-	-
--	-	-	-
-G-5 vE d3 c1	-	-	-
--	-	-	-
-C-5 vF d3 c1	Ab4 vC d4 c2	-	-
--	-	-	-
-G-5 vE d3 c1	-	-	-
--	-	-	-
-C-5 vF d3 c1	C#4 vC d4 c2	-	-
--	-	-	-
-G-5 vE d3 c1	-	-	-
--	-	-	-
+C-5 v8 d1 c1	Bb2 vC d3 c2	-	-
+-	-	-	G-7 vF d2 s0
+G-5 v8 d3 c1	-	-	-
+-	-	-	G-0 vF d5 s0

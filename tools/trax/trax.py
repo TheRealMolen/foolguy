@@ -44,11 +44,11 @@ def note_to_gba_freq(note, octave):
 ###############################################################################################################
 
 # note, accidental, octave   |   velocity, envelope, length     |    extension data per sound type
-# nao vell xx
+# nao vell xz
 # C#4 F700 D3
 
 EMPTY_EDITOR_NOTE = '--- ---- --'
-EDITOR_NOTE_GUIDE = 'nao vell xx'
+EDITOR_NOTE_GUIDE = 'nao VELL XZ'
 
 class GbaNote:
     def __init__(self):
@@ -78,7 +78,24 @@ class GbaNote:
             return self._note + self._accidental
         return self._note
     
+    def set_vel(self, val):
+        self.velocity = val
+
+    def set_env(self, val):
+        #1-7 set decay, 8-f set reverse and decay
+        if val < 8:
+            self.decay = val
+            self.reverse = False
+        else:
+            self.decay = 16 - val
+            self.reverse = True
+
+    def set_len(self, val):
+        self.length = clamp(val, 0, 63)
+
     def set_ext1(self, val):
+        pass
+    def set_ext2(self, val):
         pass
 
 
@@ -242,7 +259,15 @@ class WaveTblNote(GbaNote):
             self.instrument = int(token[1:])
             return True
         
-        return super()._parse_token(token)  
+        return super()._parse_token(token)
+    
+    def set_len(self, val):
+        self.length = clamp(val, 0, 255)
+    def set_ext1(self, val):
+        self.instrument = (val << 4) | (self.instrument & 0xf)
+        self.instrument = clamp(self.instrument, 0, 31)
+    def set_ext2(self, val):
+        self.instrument = (val) | (self.instrument & 0xf0)
     
     def get_save_str(self):
         s = super().get_save_str()
@@ -391,12 +416,12 @@ NUM_BEATS   = 32
 
 
 class Pattern():
-    def __init__(self, nbeats=NUM_BEATS):
-        self.nbeats = nbeats
-        self.tracks = [[SquareNote() for _ in range(self.nbeats)],
-                       [SquareNote() for _ in range(self.nbeats)],
-                       [WaveTblNote() for _ in range(self.nbeats)],
-                       [NoiseNote() for _ in range(self.nbeats)]]
+    def __init__(self, nsteps=NUM_BEATS):
+        self.nsteps = nsteps
+        self.tracks = [[SquareNote() for _ in range(self.nsteps)],
+                       [SquareNote() for _ in range(self.nsteps)],
+                       [WaveTblNote() for _ in range(self.nsteps)],
+                       [NoiseNote() for _ in range(self.nsteps)]]
         
     def calc_byte_size(self):
         bytes_per_note = 4
@@ -410,28 +435,28 @@ class Pattern():
     def load(header, itline):
         hdr_toks = header.split(' ')
         hdr = dict(tok.split('=',1) for tok in hdr_toks[1:])
-        nbeats = int(hdr['beats'])
+        nsteps = int(hdr['steps'])
 
-        pattern = Pattern(nbeats)
-        for beatix in range(nbeats):
+        pattern = Pattern(nsteps)
+        for stepix in range(nsteps):
             event_line = next(itline)
             if event_line == '':
-                raise Exception(f'invalid beat def "{event_line}"')
+                raise Exception(f'invalid step def "{event_line}"')
             
             for trackix,note in enumerate(event_line.split('\t')):
                 note_toks = [tok.strip() for tok in note.strip().split()]
-                pattern.tracks[trackix][beatix].parse(note_toks, trackix)
+                pattern.tracks[trackix][stepix].parse(note_toks, trackix)
         
         return pattern
     
     def get_save_str(self, ix):
         lines = []
-        lines.append(f'!Pattern id={ix} beats={self.nbeats} tracks={len(self.tracks)}')
+        lines.append(f'!Pattern id={ix} steps={self.nsteps} tracks={len(self.tracks)}')
 
-        for beatix in range(self.nbeats):
+        for stepix in range(self.nsteps):
             notes = []
             for track in self.tracks:
-                notes.append(track[beatix].get_save_str())
+                notes.append(track[stepix].get_save_str())
 
             lines.append('\t'.join(notes))
         
@@ -440,12 +465,12 @@ class Pattern():
 
 
 TICKS_PER_SEC = 60
-BEATS_PER_TBEAT = 4
+STEPS_PER_BEAT = 4
 
 def calc_ticks_per_step(bpm):
     beats_per_sec = bpm / 60
-    tbeats_per_sec = beats_per_sec * BEATS_PER_TBEAT
-    return round(TICKS_PER_SEC / tbeats_per_sec)
+    steps_per_sec = beats_per_sec * STEPS_PER_BEAT
+    return round(TICKS_PER_SEC / steps_per_sec)
 
 
 class Song:
@@ -548,13 +573,13 @@ def check_align(buf, align=4):
         raise Exception(f'buffer size {len(buf)} is not a multiple of {align}')
 
 def compile_pattern(pattern: Pattern):
-    header = struct.pack('Bxxx', pattern.nbeats)
+    header = struct.pack('Bxxx', pattern.nsteps)
     check_align(header, 4)
 
     buf = header
-    for beat in range(pattern.nbeats):
+    for stepix in range(pattern.nsteps):
         for trackix in range(len(pattern.tracks)):
-            buf += struct.pack('HH', pattern.tracks[trackix][beat].get_gba_ctrl(), pattern.tracks[trackix][beat].get_gba_freq())
+            buf += struct.pack('HH', pattern.tracks[trackix][stepix].get_gba_ctrl(), pattern.tracks[trackix][stepix].get_gba_freq())
 
     check_align(buf, 4)
     return buf
